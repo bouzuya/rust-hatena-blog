@@ -1,7 +1,18 @@
 use handlebars::Handlebars;
+use serde::Serialize;
 use serde_json::json;
 
-fn entry_xml() -> String {
+#[derive(Debug, Serialize)]
+struct Entry {
+    title: String,
+    name: String, // author.name
+    content: String,
+    updated: String, // YYYY-MM-DDTHH:MM:SS
+    categories: Vec<String>,
+    draft: bool,
+}
+
+fn entry_xml(entry: Entry) -> String {
     let registry = Handlebars::new();
     registry
         .render_template(
@@ -17,29 +28,38 @@ fn entry_xml() -> String {
     <app:draft>{{#if draft}}yes{{else}}no{{/if}}</app:draft>
   </app:control>
 </entry>"#,
-            &json!({
-                "title": "TITLE",
-                "name": "NAME",
-                "categories": vec!["CATEGORY"],
-                "content": "CONTENT",
-                "updated": "2020-02-07T00:00:00Z",
-                "draft": true
-            }),
+            &json!(entry),
         )
         .expect("render_template")
 }
 
 fn main() {
     println!("Hello, world!");
-    println!("{}", entry_xml());
+    let entry = Entry {
+        title: "TITLE".into(),
+        name: "NAME".into(),
+        categories: vec!["CATEGORY".into()],
+        content: "CONTENT".into(),
+        updated: "2020-02-07T00:00:00Z".into(),
+        draft: true,
+    };
+    println!("{}", entry_xml(entry));
 }
 
 #[cfg(test)]
 mod test {
     #[test]
     fn simple_entry_xml() {
+        let entry = super::Entry {
+            title: "TITLE".into(),
+            name: "NAME".into(),
+            categories: vec!["CATEGORY".into()],
+            content: "CONTENT".into(),
+            updated: "2020-02-07T00:00:00Z".into(),
+            draft: true,
+        };
         assert_eq!(
-            super::entry_xml(),
+            super::entry_xml(entry),
             r#"<?xml version="1.0" encoding="utf-8"?>
 <entry xmlns="http://www.w3.org/2005/Atom"
        xmlns:app="http://www.w3.org/2007/app">
