@@ -12,6 +12,19 @@ struct Entry {
     draft: bool,
 }
 
+impl Entry {
+    fn new() -> Self {
+        Entry {
+            title: "TITLE".into(),
+            name: "NAME".into(),
+            categories: vec!["CATEGORY".into()],
+            content: "CONTENT".into(),
+            updated: "2020-02-07T00:00:00Z".into(),
+            draft: true,
+        }
+    }
+}
+
 fn entry_xml(entry: Entry) -> String {
     let registry = Handlebars::new();
     registry
@@ -35,14 +48,7 @@ fn entry_xml(entry: Entry) -> String {
 
 fn main() {
     println!("Hello, world!");
-    let entry = Entry {
-        title: "TITLE".into(),
-        name: "NAME".into(),
-        categories: vec!["CATEGORY".into()],
-        content: "CONTENT".into(),
-        updated: "2020-02-07T00:00:00Z".into(),
-        draft: true,
-    };
+    let entry = Entry::new();
     println!("{}", entry_xml(entry));
 }
 
@@ -50,14 +56,7 @@ fn main() {
 mod test {
     #[test]
     fn simple_entry_xml() {
-        let entry = super::Entry {
-            title: "TITLE".into(),
-            name: "NAME".into(),
-            categories: vec!["CATEGORY".into()],
-            content: "CONTENT".into(),
-            updated: "2020-02-07T00:00:00Z".into(),
-            draft: true,
-        };
+        let entry = super::Entry::new();
         assert_eq!(
             super::entry_xml(entry),
             r#"<?xml version="1.0" encoding="utf-8"?>
