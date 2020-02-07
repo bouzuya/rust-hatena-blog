@@ -2,6 +2,26 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 
+#[derive(Debug)]
+struct Config {
+    api_key: String,
+    blog_id: String,
+    hatena_id: String,
+}
+
+impl Config {
+    fn new_from_env() -> Result<Self, Box<dyn std::error::Error>> {
+        let api_key = std::env::var("HATENA_API_KEY")?;
+        let blog_id = std::env::var("HATENA_BLOG_ID")?;
+        let hatena_id = std::env::var("HATENA_ID")?;
+        Ok(Config {
+            api_key,
+            blog_id,
+            hatena_id,
+        })
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct Entry {
     title: String,
@@ -56,20 +76,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let text = reqwest::get("http://httpbin.org/ip").await?.text().await?;
     println!("Response: {}", text);
 
-    let hatena_id = "bouzuya";
-    let blog_id = "bouzuya.hatenablog.com";
-    let api_key = std::env::vars()
-        .find(|(k, _)| k == "HATENA_API_KEY")
-        .expect("HATENA_API_KEY")
-        .1;
+    let config = Config::new_from_env().expect("invalid env");
     let url = format!(
         "https://blog.hatena.ne.jp/{}/{}/atom/entry",
-        hatena_id, blog_id
+        config.hatena_id, config.blog_id
     );
     let client = reqwest::Client::new();
     client
         .post(&url)
-        .basic_auth(hatena_id, Some(api_key))
+        .basic_auth(config.hatena_id, Some(config.api_key))
         .body(xml)
         .send()
         .await?;
