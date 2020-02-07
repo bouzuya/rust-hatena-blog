@@ -50,10 +50,29 @@ fn entry_xml(entry: Entry) -> String {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Hello, world!");
     let entry = Entry::new();
-    println!("{}", entry_xml(entry));
+    let xml = entry_xml(entry);
+    println!("{}", xml);
 
     let text = reqwest::get("http://httpbin.org/ip").await?.text().await?;
     println!("Response: {}", text);
+
+    let hatena_id = "bouzuya";
+    let blog_id = "bouzuya.hatenablog.com";
+    let api_key = std::env::vars()
+        .find(|(k, _)| k == "HATENA_API_KEY")
+        .expect("HATENA_API_KEY")
+        .1;
+    let url = format!(
+        "https://blog.hatena.ne.jp/{}/{}/atom/entry",
+        hatena_id, blog_id
+    );
+    let client = reqwest::Client::new();
+    client
+        .post(&url)
+        .basic_auth(hatena_id, Some(api_key))
+        .body(xml)
+        .send()
+        .await?;
 
     Ok(())
 }
