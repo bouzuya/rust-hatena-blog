@@ -46,10 +46,16 @@ fn entry_xml(entry: Entry) -> String {
         .expect("render_template")
 }
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Hello, world!");
     let entry = Entry::new();
     println!("{}", entry_xml(entry));
+
+    let text = reqwest::get("http://httpbin.org/ip").await?.text().await?;
+    println!("Response: {}", text);
+
+    Ok(())
 }
 
 #[cfg(test)]
