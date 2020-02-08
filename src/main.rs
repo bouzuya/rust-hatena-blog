@@ -87,18 +87,9 @@ async fn create_entry(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Hello, world!");
-
-    let entry = Entry::new();
-    let xml = entry_xml(&entry);
-    println!("{}", xml);
-
-    let text = reqwest::get("http://httpbin.org/ip").await?.text().await?;
-    println!("Response: {}", text);
-
     let config = Config::new_from_env().expect("invalid env");
+    let entry = Entry::new();
     create_entry(config, &entry).await?;
-
     Ok(())
 }
 
