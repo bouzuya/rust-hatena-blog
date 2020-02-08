@@ -45,7 +45,7 @@ impl Entry {
     }
 }
 
-fn entry_xml(entry: Entry) -> String {
+fn entry_xml(entry: &Entry) -> String {
     let registry = Handlebars::new();
     registry
         .render_template(
@@ -66,28 +66,38 @@ fn entry_xml(entry: Entry) -> String {
         .expect("render_template")
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Hello, world!");
-    let entry = Entry::new();
-    let xml = entry_xml(entry);
-    println!("{}", xml);
-
-    let text = reqwest::get("http://httpbin.org/ip").await?.text().await?;
-    println!("Response: {}", text);
-
-    let config = Config::new_from_env().expect("invalid env");
+async fn create_entry(
+    config: Config,
+    entry: &Entry,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let url = format!(
         "https://blog.hatena.ne.jp/{}/{}/atom/entry",
         config.hatena_id, config.blog_id
     );
     let client = reqwest::Client::new();
+    let xml = entry_xml(entry);
     client
         .post(&url)
         .basic_auth(config.hatena_id, Some(config.api_key))
         .body(xml)
         .send()
         .await?;
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!("Hello, world!");
+
+    let entry = Entry::new();
+    let xml = entry_xml(&entry);
+    println!("{}", xml);
+
+    let text = reqwest::get("http://httpbin.org/ip").await?.text().await?;
+    println!("Response: {}", text);
+
+    let config = Config::new_from_env().expect("invalid env");
+    create_entry(config, &entry).await?;
 
     Ok(())
 }
@@ -98,7 +108,7 @@ mod test {
     fn simple_entry_xml() {
         let entry = super::Entry::new();
         assert_eq!(
-            super::entry_xml(entry),
+            super::entry_xml(&entry),
             r#"<?xml version="1.0" encoding="utf-8"?>
 <entry xmlns="http://www.w3.org/2005/Atom"
        xmlns:app="http://www.w3.org/2007/app">
