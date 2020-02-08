@@ -2,6 +2,36 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 
+struct Client {
+    config: Config,
+}
+
+impl Client {
+    fn new(config: Config) -> Self {
+        Self { config }
+    }
+
+    async fn create_entry(
+        &self,
+        entry: &Entry,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let config = &self.config;
+        let url = format!(
+            "https://blog.hatena.ne.jp/{}/{}/atom/entry",
+            config.hatena_id, config.blog_id
+        );
+        let client = reqwest::Client::new();
+        let xml = entry_xml(entry);
+        client
+            .post(&url)
+            .basic_auth(&config.hatena_id, Some(&config.api_key))
+            .body(xml)
+            .send()
+            .await?;
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 struct Config {
     api_key: String,
@@ -66,30 +96,12 @@ fn entry_xml(entry: &Entry) -> String {
         .expect("render_template")
 }
 
-async fn create_entry(
-    config: Config,
-    entry: &Entry,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let url = format!(
-        "https://blog.hatena.ne.jp/{}/{}/atom/entry",
-        config.hatena_id, config.blog_id
-    );
-    let client = reqwest::Client::new();
-    let xml = entry_xml(entry);
-    client
-        .post(&url)
-        .basic_auth(config.hatena_id, Some(config.api_key))
-        .body(xml)
-        .send()
-        .await?;
-    Ok(())
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let config = Config::new_from_env().expect("invalid env");
+    let client = Client::new(config);
     let entry = Entry::new();
-    create_entry(config, &entry).await?;
+    client.create_entry(&entry).await?;
     Ok(())
 }
 
