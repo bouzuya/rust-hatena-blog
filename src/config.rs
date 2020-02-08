@@ -18,11 +18,7 @@ impl Config {
         let api_key = std::env::var("HATENA_API_KEY")?;
         let blog_id = std::env::var("HATENA_BLOG_ID")?;
         let hatena_id = std::env::var("HATENA_ID")?;
-        Ok(Config {
-            api_key,
-            blog_id,
-            hatena_id,
-        })
+        Ok(Config::new(&hatena_id, &blog_id, &api_key))
     }
 }
 
