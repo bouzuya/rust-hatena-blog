@@ -37,7 +37,7 @@ impl Client {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 struct Config {
     api_key: String,
     blog_id: String,
@@ -45,6 +45,14 @@ struct Config {
 }
 
 impl Config {
+    fn new(hatena_id: &str, blog_id: &str, api_key: &str) -> Self {
+        Config {
+            api_key: api_key.into(),
+            blog_id: blog_id.into(),
+            hatena_id: hatena_id.into(),
+        }
+    }
+
     fn new_from_env() -> Result<Self, Box<dyn std::error::Error>> {
         let api_key = std::env::var("HATENA_API_KEY")?;
         let blog_id = std::env::var("HATENA_BLOG_ID")?;
@@ -114,16 +122,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 mod test {
     #[test]
     fn client_collection_uri() {
-        let config = super::Config {
-            api_key: "API_KEY".into(),
-            blog_id: "BLOG_ID".into(),
-            hatena_id: "HATENA_ID".into(),
-        };
+        let config = super::Config::new("HATENA_ID", "BLOG_ID", "API_KEY");
         let client = super::Client::new(config);
         assert_eq!(
             "https://blog.hatena.ne.jp/HATENA_ID/BLOG_ID/atom/entry",
             client.collection_uri()
         )
+    }
+
+    #[test]
+    fn config_new() {
+        assert_eq!(
+            super::Config::new("HATENA_ID", "BLOG_ID", "API_KEY"),
+            super::Config {
+                api_key: "API_KEY".into(),
+                blog_id: "BLOG_ID".into(),
+                hatena_id: "HATENA_ID".into(),
+            }
+        );
     }
 
     #[test]
