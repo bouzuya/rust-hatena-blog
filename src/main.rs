@@ -16,12 +16,9 @@ impl Client {
         entry: &Entry,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let config = &self.config;
-        let url = format!(
-            "https://blog.hatena.ne.jp/{}/{}/atom/entry",
-            config.hatena_id, config.blog_id
-        );
         let client = reqwest::Client::new();
         let xml = entry_xml(entry);
+        let url = self.collection_uri();
         client
             .post(&url)
             .basic_auth(&config.hatena_id, Some(&config.api_key))
@@ -29,6 +26,14 @@ impl Client {
             .send()
             .await?;
         Ok(())
+    }
+
+    fn collection_uri(&self) -> String {
+        let config = &self.config;
+        format!(
+            "https://blog.hatena.ne.jp/{}/{}/atom/entry",
+            config.hatena_id, config.blog_id
+        )
     }
 }
 
@@ -107,6 +112,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
 #[cfg(test)]
 mod test {
+    #[test]
+    fn client_collection_uri() {
+        let config = super::Config {
+            api_key: "API_KEY".into(),
+            blog_id: "BLOG_ID".into(),
+            hatena_id: "HATENA_ID".into(),
+        };
+        let client = super::Client::new(config);
+        assert_eq!(
+            "https://blog.hatena.ne.jp/HATENA_ID/BLOG_ID/atom/entry",
+            client.collection_uri()
+        )
+    }
+
     #[test]
     fn simple_entry_xml() {
         let entry = super::Entry::new();
