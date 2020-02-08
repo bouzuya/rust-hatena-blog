@@ -2,6 +2,10 @@ use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 
+mod config;
+
+use config::Config;
+
 struct Client {
     config: Config,
 }
@@ -34,34 +38,6 @@ impl Client {
             "https://blog.hatena.ne.jp/{}/{}/atom/entry",
             config.hatena_id, config.blog_id
         )
-    }
-}
-
-#[derive(Debug, Eq, PartialEq)]
-struct Config {
-    api_key: String,
-    blog_id: String,
-    hatena_id: String,
-}
-
-impl Config {
-    fn new(hatena_id: &str, blog_id: &str, api_key: &str) -> Self {
-        Config {
-            api_key: api_key.into(),
-            blog_id: blog_id.into(),
-            hatena_id: hatena_id.into(),
-        }
-    }
-
-    fn new_from_env() -> Result<Self, Box<dyn std::error::Error>> {
-        let api_key = std::env::var("HATENA_API_KEY")?;
-        let blog_id = std::env::var("HATENA_BLOG_ID")?;
-        let hatena_id = std::env::var("HATENA_ID")?;
-        Ok(Config {
-            api_key,
-            blog_id,
-            hatena_id,
-        })
     }
 }
 
@@ -128,18 +104,6 @@ mod test {
             "https://blog.hatena.ne.jp/HATENA_ID/BLOG_ID/atom/entry",
             client.collection_uri()
         )
-    }
-
-    #[test]
-    fn config_new() {
-        assert_eq!(
-            super::Config::new("HATENA_ID", "BLOG_ID", "API_KEY"),
-            super::Config {
-                api_key: "API_KEY".into(),
-                blog_id: "BLOG_ID".into(),
-                hatena_id: "HATENA_ID".into(),
-            }
-        );
     }
 
     #[test]
