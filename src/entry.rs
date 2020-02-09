@@ -13,9 +13,13 @@ pub struct Entry {
 }
 
 impl Entry {
-    pub fn new() -> Self {
+    pub fn new_dummy() -> Self {
+        Self::new("TITLE")
+    }
+
+    pub fn new(title: &str) -> Self {
         Entry {
-            title: "TITLE".into(),
+            title: title.into(),
             name: "NAME".into(),
             categories: vec!["CATEGORY".into()],
             content: "CONTENT".into(),
@@ -51,7 +55,22 @@ mod test {
     #[test]
     fn new() {
         assert_eq!(
-            super::Entry::new(),
+            super::Entry::new("TITLE1"),
+            super::Entry {
+                title: "TITLE1".into(),
+                name: "NAME".into(),
+                categories: vec!["CATEGORY".into()],
+                content: "CONTENT".into(),
+                updated: "2020-02-07T00:00:00Z".into(),
+                draft: true,
+            }
+        )
+    }
+
+    #[test]
+    fn new_dummy() {
+        assert_eq!(
+            super::Entry::new_dummy(),
             super::Entry {
                 title: "TITLE".into(),
                 name: "NAME".into(),
@@ -65,7 +84,7 @@ mod test {
 
     #[test]
     fn to_xml_simple() {
-        let entry = super::Entry::new();
+        let entry = super::Entry::new_dummy();
         assert_eq!(
             entry.to_xml(),
             r#"<?xml version="1.0" encoding="utf-8"?>

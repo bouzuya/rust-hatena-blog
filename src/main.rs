@@ -10,7 +10,7 @@ use crate::entry::Entry;
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let config = Config::new_from_env().expect("invalid env");
     let client = Client::new(&config);
-    let entry = Entry::new();
+    let entry = Entry::new_dummy();
     client.create_entry(&entry).await?;
     Ok(())
 }
