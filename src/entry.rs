@@ -14,17 +14,31 @@ pub struct Entry {
 
 impl Entry {
     pub fn new_dummy() -> Self {
-        Self::new("TITLE")
+        Self::new(
+            "TITLE",
+            "NAME",
+            &vec!["CATEGORY"],
+            "CONTENT",
+            "2020-02-07T00:00:00Z",
+            true,
+        )
     }
 
-    pub fn new(title: &str) -> Self {
+    pub fn new(
+        title: &str,
+        name: &str,
+        categories: &Vec<&str>,
+        content: &str,
+        updated: &str,
+        draft: bool,
+    ) -> Self {
         Entry {
             title: title.into(),
-            name: "NAME".into(),
-            categories: vec!["CATEGORY".into()],
-            content: "CONTENT".into(),
-            updated: "2020-02-07T00:00:00Z".into(),
-            draft: true,
+            name: name.into(),
+            categories: categories.iter().map(|&s| s.into()).collect(),
+            content: content.into(),
+            updated: updated.into(),
+            draft,
         }
     }
 
@@ -55,13 +69,20 @@ mod test {
     #[test]
     fn new() {
         assert_eq!(
-            super::Entry::new("TITLE1"),
+            super::Entry::new(
+                "TITLE1",
+                "NAME1",
+                &vec!["CATEGORY1", "CATEGORY2"],
+                "CONTENT1",
+                "2020-02-07T23:59:59Z",
+                true,
+            ),
             super::Entry {
                 title: "TITLE1".into(),
-                name: "NAME".into(),
-                categories: vec!["CATEGORY".into()],
-                content: "CONTENT".into(),
-                updated: "2020-02-07T00:00:00Z".into(),
+                name: "NAME1".into(),
+                categories: vec!["CATEGORY1".into(), "CATEGORY2".into()],
+                content: "CONTENT1".into(),
+                updated: "2020-02-07T23:59:59Z".into(),
                 draft: true,
             }
         )
