@@ -5,18 +5,27 @@ mod entry;
 use crate::client::Client;
 use crate::config::Config;
 use crate::entry::Entry;
-use clap::App;
+use clap::{App, SubCommand};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let _ = App::new("hatena-blog")
+    let app = App::new("hatena-blog")
         .version("0.1.0")
         .author("bouzuya <m@bouzuya.net>")
-        .get_matches();
+        .subcommand(SubCommand::with_name("create").about("create an entry"));
     let config = Config::new_from_env().expect("invalid env");
     let client = Client::new(&config);
-    let entry = Entry::new_dummy();
-    client.create_entry(&entry).await?;
+    let matches = app.get_matches();
+    match matches.subcommand_name() {
+        Some(command) => match command {
+            "create" => {
+                let entry = Entry::new_dummy();
+                client.create_entry(&entry).await?;
+            }
+            _ => {}
+        },
+        None => {}
+    }
     Ok(())
 }
 
