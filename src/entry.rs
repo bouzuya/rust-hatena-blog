@@ -13,6 +13,7 @@ pub struct Entry {
 }
 
 impl Entry {
+    #[allow(dead_code)]
     pub fn new_dummy() -> Self {
         Self::new(
             "TITLE",
