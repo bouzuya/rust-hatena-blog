@@ -1,11 +1,5 @@
-mod client;
-mod config;
-mod entry;
-
-use crate::client::Client;
-use crate::config::Config;
-use crate::entry::Entry;
 use clap::{App, Arg, SubCommand};
+use hatena_blog::{Client, Config, Entry};
 use std::fs::File;
 use std::io::prelude::*;
 
