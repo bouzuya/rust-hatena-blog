@@ -26,6 +26,11 @@ pub enum Subcommand {
         #[structopt(name = "UPDATED", long = "updated", help = "set updated")]
         updated: String,
     },
+    #[structopt(name = "get", about = "Gets the entry")]
+    Get {
+        #[structopt(name = "ENTRY_ID", help = "The entry id")]
+        entry_id: String,
+    },
 }
 
 #[tokio::main]
@@ -50,6 +55,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 draft,
             );
             client.create_entry(&entry).await?;
+        }
+        Subcommand::Get { entry_id } => {
+            let entry = client.get_entry(entry_id.as_str()).await?;
+            println!("{}", entry);
         }
     }
     Ok(())
