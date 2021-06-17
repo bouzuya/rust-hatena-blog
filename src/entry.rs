@@ -4,42 +4,42 @@ use serde_json::json;
 
 #[derive(Debug, Eq, PartialEq, Serialize)]
 pub struct Entry {
-    title: String,
-    name: String, // author.name
-    content: String,
-    updated: String, // YYYY-MM-DDTHH:MM:SS
     categories: Vec<String>,
+    content: String,
     draft: bool,
+    name: String, // author.name
+    title: String,
+    updated: String, // YYYY-MM-DDTHH:MM:SS
 }
 
 impl Entry {
     #[allow(dead_code)]
     pub fn new_dummy() -> Self {
         Self::new(
-            "TITLE",
-            "NAME",
-            &vec!["CATEGORY"],
-            "CONTENT",
-            "2020-02-07T00:00:00Z",
+            "TITLE".to_string(),
+            "NAME".to_string(),
+            vec!["CATEGORY".to_string()],
+            "CONTENT".to_string(),
+            "2020-02-07T00:00:00Z".to_string(),
             true,
         )
     }
 
     pub fn new(
-        title: &str,
-        name: &str,
-        categories: &Vec<&str>,
-        content: &str,
-        updated: &str,
+        title: String,
+        name: String,
+        categories: Vec<String>,
+        content: String,
+        updated: String,
         draft: bool,
     ) -> Self {
-        Entry {
-            title: title.into(),
-            name: name.into(),
-            categories: categories.iter().map(|&s| s.into()).collect(),
-            content: content.into(),
-            updated: updated.into(),
+        Self {
+            categories,
+            content,
             draft,
+            name,
+            title,
+            updated,
         }
     }
 
@@ -67,18 +67,20 @@ impl Entry {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+
     #[test]
     fn new() {
         assert_eq!(
-            super::Entry::new(
-                "TITLE1",
-                "NAME1",
-                &vec!["CATEGORY1", "CATEGORY2"],
-                "CONTENT1",
-                "2020-02-07T23:59:59Z",
+            Entry::new(
+                "TITLE1".to_string(),
+                "NAME1".to_string(),
+                vec!["CATEGORY1".to_string(), "CATEGORY2".to_string()],
+                "CONTENT1".to_string(),
+                "2020-02-07T23:59:59Z".to_string(),
                 true,
             ),
-            super::Entry {
+            Entry {
                 title: "TITLE1".into(),
                 name: "NAME1".into(),
                 categories: vec!["CATEGORY1".into(), "CATEGORY2".into()],
@@ -92,8 +94,8 @@ mod test {
     #[test]
     fn new_dummy() {
         assert_eq!(
-            super::Entry::new_dummy(),
-            super::Entry {
+            Entry::new_dummy(),
+            Entry {
                 title: "TITLE".into(),
                 name: "NAME".into(),
                 categories: vec!["CATEGORY".into()],
@@ -106,7 +108,7 @@ mod test {
 
     #[test]
     fn to_xml_simple() {
-        let entry = super::Entry::new_dummy();
+        let entry = Entry::new_dummy();
         assert_eq!(
             entry.to_xml(),
             r#"<?xml version="1.0" encoding="utf-8"?>
