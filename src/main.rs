@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Subcommand::Get { entry_id } => {
             let entry = client.get_entry(entry_id.as_str()).await?;
-            println!("{}", entry);
+            println!("{}", entry.content);
         }
     }
     Ok(())
