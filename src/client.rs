@@ -82,9 +82,18 @@ impl Client {
         }
     }
 
-    pub async fn create_entry(&self, entry: &Entry) -> Result<(), ClientError> {
+    pub async fn create_entry(
+        &self,
+        author_name: String,
+        title: String,
+        content: String,
+        updated: String, // YYYY-MM-DDTHH:MM:SS
+        categories: Vec<String>,
+        draft: bool,
+    ) -> Result<(), ClientError> {
         let config = &self.config;
         let client = reqwest::Client::new();
+        let entry = Entry::new(title, author_name, categories, content, updated, draft);
         let xml = entry.to_xml();
         let url = self.collection_uri();
         client

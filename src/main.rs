@@ -46,15 +46,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             updated,
         } => {
             let content = fs::read_to_string(content.as_path())?;
-            let entry = Entry::new(
-                title,
-                config.hatena_id,
-                vec![], // TODO
-                content,
-                updated,
-                draft,
-            );
-            client.create_entry(&entry).await?;
+            client
+                .create_entry(
+                    config.hatena_id,
+                    title,
+                    content,
+                    updated,
+                    vec![], // TODO
+                    draft,
+                )
+                .await?;
         }
         Subcommand::Get { entry_id } => {
             let entry = client.get_entry(entry_id.as_str()).await?;
