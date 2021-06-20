@@ -3,7 +3,7 @@ use std::str::FromStr;
 use crate::config::Config;
 use crate::entry::Entry;
 use atom_syndication::Feed;
-use reqwest::StatusCode;
+use reqwest::{Response, StatusCode};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -85,6 +85,21 @@ fn new_entry_from_entry_xml(body: String) -> Result<Entry, ClientError> {
     ))
 }
 
+async fn new_response_from_reqwest_response(response: Response) -> Result<Entry, ClientError> {
+    match response.status() {
+        status_code if status_code.is_success() => {
+            let body = response.text().await?;
+            new_entry_from_entry_xml(body)
+        }
+        StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
+        StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
+        StatusCode::NOT_FOUND => Err(ClientError::NotFound),
+        StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
+        StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
+        _ => Err(ClientError::UnknownStatusCode),
+    }
+}
+
 impl Client {
     pub fn new(config: &Config) -> Self {
         Self {
@@ -120,18 +135,7 @@ impl Client {
             .body(xml)
             .send()
             .await?;
-        match response.status() {
-            status_code if status_code.is_success() => {
-                let body = response.text().await?;
-                new_entry_from_entry_xml(body)
-            }
-            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
-            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
-            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
-            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
-            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
-            _ => Err(ClientError::UnknownStatusCode),
-        }
+        new_response_from_reqwest_response(response).await
     }
 
     pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
@@ -143,18 +147,7 @@ impl Client {
             .basic_auth(&config.hatena_id, Some(&config.api_key))
             .send()
             .await?;
-        match response.status() {
-            status_code if status_code.is_success() => {
-                let body = response.text().await?;
-                new_entry_from_entry_xml(body)
-            }
-            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
-            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
-            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
-            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
-            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
-            _ => Err(ClientError::UnknownStatusCode),
-        }
+        new_response_from_reqwest_response(response).await
     }
 
     fn collection_uri(&self) -> String {
