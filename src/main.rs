@@ -11,7 +11,7 @@ struct Opt {
 
 #[derive(Debug, StructOpt)]
 pub enum Subcommand {
-    #[structopt(name = "create", about = "create an entry")]
+    #[structopt(name = "create", about = "Creates a new entry")]
     Create {
         #[structopt(
             name = "FILE",
@@ -19,11 +19,11 @@ pub enum Subcommand {
             help = "set content (markdown file only)"
         )]
         content: PathBuf,
-        #[structopt(long = "draft", help = "set draft")]
+        #[structopt(long = "draft", help = "Creates as draft")]
         draft: bool,
-        #[structopt(name = "TITLE", long = "title", help = "set title")]
+        #[structopt(long = "title", name = "TITLE", help = "The title")]
         title: String,
-        #[structopt(name = "UPDATED", long = "updated", help = "set updated")]
+        #[structopt(long = "updated", name = "UPDATED", help = "The date")]
         updated: String,
     },
     #[structopt(name = "get", about = "Gets the entry")]
