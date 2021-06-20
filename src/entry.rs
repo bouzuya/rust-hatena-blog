@@ -4,10 +4,10 @@ use serde_json::json;
 
 #[derive(Debug, Eq, PartialEq, Serialize)]
 pub struct Entry {
+    author_name: String,
     categories: Vec<String>,
     pub content: String,
     draft: bool,
-    name: String, // author.name
     title: String,
     updated: String, // YYYY-MM-DDTHH:MM:SS
 }
@@ -15,17 +15,17 @@ pub struct Entry {
 impl Entry {
     pub fn new(
         title: String,
-        name: String,
+        author_name: String,
         categories: Vec<String>,
         content: String,
         updated: String,
         draft: bool,
     ) -> Self {
         Self {
+            author_name,
             categories,
             content,
             draft,
-            name,
             title,
             updated,
         }
@@ -68,7 +68,7 @@ mod test {
     fn new_dummy() -> Entry {
         Entry::new(
             "TITLE".to_string(),
-            "NAME".to_string(),
+            "AUTHOR_NAME".to_string(),
             vec!["CATEGORY".to_string()],
             "CONTENT".to_string(),
             "2020-02-07T00:00:00Z".to_string(),
@@ -81,7 +81,7 @@ mod test {
         assert_eq!(
             Entry::new(
                 "TITLE1".to_string(),
-                "NAME1".to_string(),
+                "AUTHOR_NAME1".to_string(),
                 vec!["CATEGORY1".to_string(), "CATEGORY2".to_string()],
                 "CONTENT1".to_string(),
                 "2020-02-07T23:59:59Z".to_string(),
@@ -89,7 +89,7 @@ mod test {
             ),
             Entry {
                 title: "TITLE1".into(),
-                name: "NAME1".into(),
+                author_name: "AUTHOR_NAME1".into(),
                 categories: vec!["CATEGORY1".into(), "CATEGORY2".into()],
                 content: "CONTENT1".into(),
                 updated: "2020-02-07T23:59:59Z".into(),
