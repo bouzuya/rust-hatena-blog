@@ -43,6 +43,38 @@ fn get_draft(entry: &atom_syndication::Entry) -> bool {
         .unwrap_or(false)
 }
 
+fn new_entry_from_entry_xml(body: String) -> Result<Entry, ClientError> {
+    let xml = format!(
+        "<feed>{}</feed>",
+        body.strip_prefix(r#"<?xml version="1.0" encoding="utf-8"?>"#)
+            .unwrap_or_else(|| body.as_str())
+    );
+    let feed = Feed::from_str(xml.as_str()).map_err(|_| ClientError::ResponseBody)?;
+    let entry = feed.entries().first().ok_or(ClientError::ResponseBody)?;
+    Ok(Entry::new(
+        entry.title.to_string(),
+        entry
+            .authors
+            .first()
+            .ok_or(ClientError::ResponseBody)?
+            .name
+            .to_string(),
+        entry
+            .categories
+            .iter()
+            .map(|c| c.term.clone())
+            .collect::<Vec<String>>(),
+        entry
+            .content
+            .clone()
+            .ok_or(ClientError::ResponseBody)?
+            .value
+            .ok_or(ClientError::ResponseBody)?,
+        entry.updated.to_rfc3339(),
+        get_draft(&entry),
+    ))
+}
+
 impl Client {
     pub fn new(config: &Config) -> Self {
         Self {
@@ -76,35 +108,7 @@ impl Client {
         match response.status() {
             status_code if status_code.is_success() => {
                 let body = response.text().await?;
-                let xml = format!(
-                    "<feed>{}</feed>",
-                    body.strip_prefix(r#"<?xml version="1.0" encoding="utf-8"?>"#)
-                        .unwrap_or_else(|| body.as_str())
-                );
-                let feed = Feed::from_str(xml.as_str()).map_err(|_| ClientError::ResponseBody)?;
-                let entry = feed.entries().first().ok_or(ClientError::ResponseBody)?;
-                Ok(Entry::new(
-                    entry.title.to_string(),
-                    entry
-                        .authors
-                        .first()
-                        .ok_or(ClientError::ResponseBody)?
-                        .name
-                        .to_string(),
-                    entry
-                        .categories
-                        .iter()
-                        .map(|c| c.term.clone())
-                        .collect::<Vec<String>>(),
-                    entry
-                        .content
-                        .clone()
-                        .ok_or(ClientError::ResponseBody)?
-                        .value
-                        .ok_or(ClientError::ResponseBody)?,
-                    entry.updated.to_rfc3339(),
-                    get_draft(&entry),
-                ))
+                new_entry_from_entry_xml(body)
             }
             StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
             StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
