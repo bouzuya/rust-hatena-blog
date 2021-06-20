@@ -100,7 +100,7 @@ impl Client {
         updated: String, // YYYY-MM-DDTHH:MM:SS
         categories: Vec<String>,
         draft: bool,
-    ) -> Result<(), ClientError> {
+    ) -> Result<Entry, ClientError> {
         let config = &self.config;
         let client = reqwest::Client::new();
         let entry = Entry::new(
@@ -114,13 +114,24 @@ impl Client {
         );
         let xml = entry.to_xml();
         let url = self.collection_uri();
-        client
+        let response = client
             .post(&url)
             .basic_auth(&config.hatena_id, Some(&config.api_key))
             .body(xml)
             .send()
             .await?;
-        Ok(())
+        match response.status() {
+            status_code if status_code.is_success() => {
+                let body = response.text().await?;
+                new_entry_from_entry_xml(body)
+            }
+            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
+            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
+            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
+            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
+            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
+            _ => Err(ClientError::UnknownStatusCode),
+        }
     }
 
     pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
@@ -195,8 +206,7 @@ mod test {
 
     #[test]
     fn create_entry() {
-        // TODO
-        assert_eq!(1, 1);
+        // See: examples/create_entry.rs
     }
 
     #[test]
