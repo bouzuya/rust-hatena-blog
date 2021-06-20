@@ -1,8 +1,5 @@
-use std::str::FromStr;
-
 use crate::config::Config;
 use crate::entry::Entry;
-use atom_syndication::Feed;
 use reqwest::{Response, StatusCode};
 use thiserror::Error;
 
@@ -31,65 +28,11 @@ pub enum ClientError {
     UnknownStatusCode,
 }
 
-fn get_draft(entry: &atom_syndication::Entry) -> bool {
-    entry
-        .extensions
-        .get("app")
-        .and_then(|e| e.get("control"))
-        .and_then(|children| children.iter().find(|e| &e.name == "app:control"))
-        .and_then(|e| e.children.get("draft"))
-        .and_then(|children| children.iter().find(|e| &e.name == "app:draft"))
-        .and_then(|e| e.value.as_ref().map(|value| value == "yes"))
-        .unwrap_or(false)
-}
-
-fn get_id(entry: &atom_syndication::Entry) -> Option<String> {
-    // https://blog.hatena.ne.jp/{HATENA_ID}/{BLOG_ID}/atom/entry/{ENTRY_ID}
-    entry
-        .links
-        .iter()
-        .find(|link| link.rel == "edit")
-        .and_then(|link| link.href.split('/').last().map(|id| id.to_string()))
-}
-
-fn new_entry_from_entry_xml(body: String) -> Result<Entry, ClientError> {
-    let xml = format!(
-        "<feed>{}</feed>",
-        body.strip_prefix(r#"<?xml version="1.0" encoding="utf-8"?>"#)
-            .unwrap_or_else(|| body.as_str())
-    );
-    let feed = Feed::from_str(xml.as_str()).map_err(|_| ClientError::ResponseBody)?;
-    let entry = feed.entries().first().ok_or(ClientError::ResponseBody)?;
-    Ok(Entry::new(
-        get_id(&entry).ok_or(ClientError::ResponseBody)?,
-        entry.title.to_string(),
-        entry
-            .authors
-            .first()
-            .ok_or(ClientError::ResponseBody)?
-            .name
-            .to_string(),
-        entry
-            .categories
-            .iter()
-            .map(|c| c.term.clone())
-            .collect::<Vec<String>>(),
-        entry
-            .content
-            .clone()
-            .ok_or(ClientError::ResponseBody)?
-            .value
-            .ok_or(ClientError::ResponseBody)?,
-        entry.updated.to_rfc3339(),
-        get_draft(&entry),
-    ))
-}
-
 async fn new_response_from_reqwest_response(response: Response) -> Result<Entry, ClientError> {
     match response.status() {
         status_code if status_code.is_success() => {
             let body = response.text().await?;
-            new_entry_from_entry_xml(body)
+            Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
         }
         StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
         StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),

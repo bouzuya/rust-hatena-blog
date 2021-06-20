@@ -1,6 +1,10 @@
+use std::str::FromStr;
+
+use atom_syndication::Feed;
 use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
+use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq, Serialize)]
 pub struct Entry {
@@ -13,7 +17,60 @@ pub struct Entry {
     updated: String, // YYYY-MM-DDTHH:MM:SS
 }
 
+fn get_draft(entry: &atom_syndication::Entry) -> bool {
+    entry
+        .extensions
+        .get("app")
+        .and_then(|e| e.get("control"))
+        .and_then(|children| children.iter().find(|e| &e.name == "app:control"))
+        .and_then(|e| e.children.get("draft"))
+        .and_then(|children| children.iter().find(|e| &e.name == "app:draft"))
+        .and_then(|e| e.value.as_ref().map(|value| value == "yes"))
+        .unwrap_or(false)
+}
+
+fn get_id(entry: &atom_syndication::Entry) -> Option<String> {
+    // https://blog.hatena.ne.jp/{HATENA_ID}/{BLOG_ID}/atom/entry/{ENTRY_ID}
+    entry
+        .links
+        .iter()
+        .find(|link| link.rel == "edit")
+        .and_then(|link| link.href.split('/').last().map(|id| id.to_string()))
+}
+
+#[derive(Debug, Eq, Error, PartialEq)]
+#[error("parse entry error")]
+pub struct ParseEntry;
+
 impl Entry {
+    pub fn from_entry_xml(body: &str) -> Result<Entry, ParseEntry> {
+        let xml = format!(
+            "<feed>{}</feed>",
+            body.strip_prefix(r#"<?xml version="1.0" encoding="utf-8"?>"#)
+                .unwrap_or(body)
+        );
+        let feed = Feed::from_str(xml.as_str()).map_err(|_| ParseEntry)?;
+        let entry = feed.entries().first().ok_or(ParseEntry)?;
+        Ok(Entry::new(
+            get_id(&entry).ok_or(ParseEntry)?,
+            entry.title.to_string(),
+            entry.authors.first().ok_or(ParseEntry)?.name.to_string(),
+            entry
+                .categories
+                .iter()
+                .map(|c| c.term.clone())
+                .collect::<Vec<String>>(),
+            entry
+                .content
+                .clone()
+                .ok_or(ParseEntry)?
+                .value
+                .ok_or(ParseEntry)?,
+            entry.updated.to_rfc3339(),
+            get_draft(&entry),
+        ))
+    }
+
     pub fn new(
         id: String,
         title: String,
@@ -42,7 +99,7 @@ impl Entry {
 <entry xmlns="http://www.w3.org/2005/Atom"
        xmlns:app="http://www.w3.org/2007/app">
   <title>{{title}}</title>
-  <author><name>{{name}}</name></author>
+  <author><name>{{author_name}}</name></author>
   <content type="text/plain">{{content}}</content>
   <updated>{{updated}}</updated>
   {{#each categories}}<category term="{{this}}" />{{/each}}
@@ -113,7 +170,7 @@ mod test {
 <entry xmlns="http://www.w3.org/2005/Atom"
        xmlns:app="http://www.w3.org/2007/app">
   <title>TITLE</title>
-  <author><name>NAME</name></author>
+  <author><name>AUTHOR_NAME</name></author>
   <content type="text/plain">CONTENT</content>
   <updated>2020-02-07T00:00:00Z</updated>
   <category term="CATEGORY" />
@@ -158,6 +215,22 @@ mod test {
     <app:draft>no</app:draft>
   </app:control>
 </entry>"#;
+
+    #[test]
+    fn from_entry_xml() {
+        assert_eq!(
+            Entry::from_entry_xml(GET_ENTRY_RESPONSE_XML),
+            Ok(Entry::new(
+                "2500000000".to_string(),
+                "記事タイトル".to_string(),
+                "{はてなID}".to_string(),
+                vec!["Scala".to_string(), "Perl".to_string()],
+                "\n    ** 記事本文\n    - リスト1\n    - リスト2\n    内容\n  ".to_string(),
+                "2013-09-02T11:28:23+09:00".to_string(),
+                false,
+            ))
+        );
+    }
 
     #[test]
     fn atom_syndication_parse_from_get_entry_xml() -> anyhow::Result<()> {
