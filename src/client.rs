@@ -170,6 +170,6 @@ mod test {
 
     #[test]
     fn get_entry() {
-        // See: examples/hatena_blog.rs
+        // See: examples/get_entry.rs
     }
 }
