@@ -70,7 +70,7 @@ impl Client {
             updated,
             draft,
         );
-        let xml = entry.to_xml();
+        let xml = entry.to_create_request_body_xml();
         let url = self.collection_uri();
         let response = client
             .post(&url)
