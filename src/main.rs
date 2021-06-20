@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             updated,
         } => {
             let content = fs::read_to_string(content.as_path())?;
-            client
+            let entry = client
                 .create_entry(
                     config.hatena_id,
                     title,
@@ -56,10 +56,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     draft,
                 )
                 .await?;
+            println!("{}", entry.to_json());
         }
         Subcommand::Get { entry_id } => {
             let entry = client.get_entry(entry_id.as_str()).await?;
-            println!("{}", entry.content);
+            println!("{}", entry.to_json());
         }
     }
     Ok(())
