@@ -111,6 +111,10 @@ impl Entry {
             )
             .expect("render_template")
     }
+
+    pub fn to_json(&self) -> String {
+        json!(self).to_string()
+    }
 }
 
 #[cfg(test)]
@@ -380,5 +384,14 @@ mod test {
             extensions
         });
         Ok(())
+    }
+
+    #[test]
+    fn to_json() {
+        let entry = new_dummy();
+        assert_eq!(
+            entry.to_json(),
+            r#"{"author_name":"AUTHOR_NAME","categories":["CATEGORY"],"content":"CONTENT","draft":true,"id":"ID","title":"TITLE","updated":"2020-02-07T00:00:00Z"}"#
+        );
     }
 }
