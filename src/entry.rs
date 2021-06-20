@@ -13,18 +13,6 @@ pub struct Entry {
 }
 
 impl Entry {
-    #[allow(dead_code)]
-    pub fn new_dummy() -> Self {
-        Self::new(
-            "TITLE".to_string(),
-            "NAME".to_string(),
-            vec!["CATEGORY".to_string()],
-            "CONTENT".to_string(),
-            "2020-02-07T00:00:00Z".to_string(),
-            true,
-        )
-    }
-
     pub fn new(
         title: String,
         name: String,
@@ -77,6 +65,17 @@ mod test {
 
     use super::*;
 
+    fn new_dummy() -> Entry {
+        Entry::new(
+            "TITLE".to_string(),
+            "NAME".to_string(),
+            vec!["CATEGORY".to_string()],
+            "CONTENT".to_string(),
+            "2020-02-07T00:00:00Z".to_string(),
+            true,
+        )
+    }
+
     #[test]
     fn new() {
         assert_eq!(
@@ -100,23 +99,8 @@ mod test {
     }
 
     #[test]
-    fn new_dummy() {
-        assert_eq!(
-            Entry::new_dummy(),
-            Entry {
-                title: "TITLE".into(),
-                name: "NAME".into(),
-                categories: vec!["CATEGORY".into()],
-                content: "CONTENT".into(),
-                updated: "2020-02-07T00:00:00Z".into(),
-                draft: true,
-            }
-        )
-    }
-
-    #[test]
     fn to_xml_simple() {
-        let entry = Entry::new_dummy();
+        let entry = new_dummy();
         assert_eq!(
             entry.to_xml(),
             r#"<?xml version="1.0" encoding="utf-8"?>
