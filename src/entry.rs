@@ -8,12 +8,14 @@ pub struct Entry {
     categories: Vec<String>,
     pub content: String,
     draft: bool,
+    id: String,
     title: String,
     updated: String, // YYYY-MM-DDTHH:MM:SS
 }
 
 impl Entry {
     pub fn new(
+        id: String,
         title: String,
         author_name: String,
         categories: Vec<String>,
@@ -26,6 +28,7 @@ impl Entry {
             categories,
             content,
             draft,
+            id,
             title,
             updated,
         }
@@ -67,6 +70,7 @@ mod test {
 
     fn new_dummy() -> Entry {
         Entry::new(
+            "ID".to_string(),
             "TITLE".to_string(),
             "AUTHOR_NAME".to_string(),
             vec!["CATEGORY".to_string()],
@@ -80,6 +84,7 @@ mod test {
     fn new() {
         assert_eq!(
             Entry::new(
+                "ID1".to_string(),
                 "TITLE1".to_string(),
                 "AUTHOR_NAME1".to_string(),
                 vec!["CATEGORY1".to_string(), "CATEGORY2".to_string()],
@@ -88,6 +93,7 @@ mod test {
                 true,
             ),
             Entry {
+                id: "ID1".to_string(),
                 title: "TITLE1".into(),
                 author_name: "AUTHOR_NAME1".into(),
                 categories: vec!["CATEGORY1".into(), "CATEGORY2".into()],

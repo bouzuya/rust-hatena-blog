@@ -43,6 +43,15 @@ fn get_draft(entry: &atom_syndication::Entry) -> bool {
         .unwrap_or(false)
 }
 
+fn get_id(entry: &atom_syndication::Entry) -> Option<String> {
+    // https://blog.hatena.ne.jp/{HATENA_ID}/{BLOG_ID}/atom/entry/{ENTRY_ID}
+    entry
+        .links
+        .iter()
+        .find(|link| link.rel == "edit")
+        .and_then(|link| link.href.split('/').last().map(|id| id.to_string()))
+}
+
 fn new_entry_from_entry_xml(body: String) -> Result<Entry, ClientError> {
     let xml = format!(
         "<feed>{}</feed>",
@@ -52,6 +61,7 @@ fn new_entry_from_entry_xml(body: String) -> Result<Entry, ClientError> {
     let feed = Feed::from_str(xml.as_str()).map_err(|_| ClientError::ResponseBody)?;
     let entry = feed.entries().first().ok_or(ClientError::ResponseBody)?;
     Ok(Entry::new(
+        get_id(&entry).ok_or(ClientError::ResponseBody)?,
         entry.title.to_string(),
         entry
             .authors
@@ -93,7 +103,15 @@ impl Client {
     ) -> Result<(), ClientError> {
         let config = &self.config;
         let client = reqwest::Client::new();
-        let entry = Entry::new(title, author_name, categories, content, updated, draft);
+        let entry = Entry::new(
+            "dummy".to_string(),
+            title,
+            author_name,
+            categories,
+            content,
+            updated,
+            draft,
+        );
         let xml = entry.to_xml();
         let url = self.collection_uri();
         client
