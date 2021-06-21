@@ -28,12 +28,9 @@ pub enum ClientError {
     UnknownStatusCode,
 }
 
-async fn new_response_from_reqwest_response(response: Response) -> Result<Entry, ClientError> {
+fn check_status(response: &Response) -> Result<(), ClientError> {
     match response.status() {
-        status_code if status_code.is_success() => {
-            let body = response.text().await?;
-            Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
-        }
+        status_code if status_code.is_success() => Ok(()),
         StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
         StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
         StatusCode::NOT_FOUND => Err(ClientError::NotFound),
@@ -41,6 +38,12 @@ async fn new_response_from_reqwest_response(response: Response) -> Result<Entry,
         StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
         _ => Err(ClientError::UnknownStatusCode),
     }
+}
+
+async fn new_response_from_reqwest_response(response: Response) -> Result<Entry, ClientError> {
+    check_status(&response)?;
+    let body = response.text().await?;
+    Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
 }
 
 impl Client {
@@ -90,15 +93,7 @@ impl Client {
             .basic_auth(&config.hatena_id, Some(&config.api_key))
             .send()
             .await?;
-        match response.status() {
-            status_code if status_code.is_success() => Ok(()),
-            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
-            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
-            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
-            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
-            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
-            _ => Err(ClientError::UnknownStatusCode),
-        }
+        check_status(&response)
     }
 
     pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
