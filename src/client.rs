@@ -81,6 +81,26 @@ impl Client {
         new_response_from_reqwest_response(response).await
     }
 
+    pub async fn delete_entry(&self, entry_id: &str) -> Result<(), ClientError> {
+        let config = &self.config;
+        let client = reqwest::Client::new();
+        let url = self.member_uri(entry_id);
+        let response = client
+            .delete(&url)
+            .basic_auth(&config.hatena_id, Some(&config.api_key))
+            .send()
+            .await?;
+        match response.status() {
+            status_code if status_code.is_success() => Ok(()),
+            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
+            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
+            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
+            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
+            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
+            _ => Err(ClientError::UnknownStatusCode),
+        }
+    }
+
     pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
         let config = &self.config;
         let client = reqwest::Client::new();
