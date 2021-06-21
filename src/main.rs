@@ -26,6 +26,11 @@ pub enum Subcommand {
         #[structopt(long = "updated", name = "UPDATED", help = "The date")]
         updated: String,
     },
+    #[structopt(name = "delete", about = "Deletes the entry")]
+    Delete {
+        #[structopt(name = "ENTRY_ID", help = "The entry id")]
+        entry_id: String,
+    },
     #[structopt(name = "get", about = "Gets the entry")]
     Get {
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
@@ -57,6 +62,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 )
                 .await?;
             println!("{}", entry.to_json());
+        }
+        Subcommand::Delete { entry_id } => {
+            client.delete_entry(entry_id.as_str()).await?;
         }
         Subcommand::Get { entry_id } => {
             let entry = client.get_entry(entry_id.as_str()).await?;
