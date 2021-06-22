@@ -2,55 +2,13 @@ use std::convert::TryFrom;
 
 use crate::config::Config;
 use crate::entry::Entry;
-use crate::EntryId;
+use crate::EntryParams;
 use reqwest::{Method, Response, StatusCode};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Client {
     config: Config,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EntryParams {
-    author_name: String,
-    title: String,
-    content: String,
-    updated: String, // YYYY-MM-DDTHH:MM:SS
-    categories: Vec<String>,
-    draft: bool,
-}
-
-impl EntryParams {
-    pub fn new(
-        author_name: String,
-        title: String,
-        content: String,
-        updated: String, // YYYY-MM-DDTHH:MM:SS
-        categories: Vec<String>,
-        draft: bool,
-    ) -> Self {
-        Self {
-            author_name,
-            title,
-            content,
-            updated,
-            categories,
-            draft,
-        }
-    }
-
-    fn into_entry(self, id: EntryId) -> Entry {
-        Entry::new(
-            id,
-            self.title,
-            self.author_name,
-            self.categories,
-            self.content,
-            self.updated,
-            self.draft,
-        )
-    }
 }
 
 #[derive(Debug, Error)]
@@ -109,10 +67,8 @@ impl Client {
     }
 
     pub async fn create_entry(&self, entry_params: EntryParams) -> Result<Entry, ClientError> {
-        // FIXME
-        let entry = entry_params.into_entry("dummy".parse().unwrap());
-        let xml = entry.to_request_body_xml();
-        self.request(Method::POST, &self.collection_uri(), Some(xml))
+        let body = entry_params.into_xml();
+        self.request(Method::POST, &self.collection_uri(), Some(body))
             .await?
             .into_entry()
             .await
@@ -136,10 +92,8 @@ impl Client {
         entry_id: &str,
         entry_params: EntryParams,
     ) -> Result<Entry, ClientError> {
-        // FIXME
-        let entry = entry_params.into_entry("dummy".parse().unwrap());
-        let xml = entry.to_request_body_xml();
-        self.request(Method::PUT, &self.member_uri(entry_id), Some(xml))
+        let body = entry_params.into_xml();
+        self.request(Method::PUT, &self.member_uri(entry_id), Some(body))
             .await?
             .into_entry()
             .await

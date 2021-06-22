@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use crate::EntryId;
 use atom_syndication::Feed;
-use handlebars::Handlebars;
 use serde::Serialize;
 use serde_json::json;
 use thiserror::Error;
@@ -93,27 +92,6 @@ impl Entry {
         }
     }
 
-    pub fn to_request_body_xml(&self) -> String {
-        let registry = Handlebars::new();
-        registry
-            .render_template(
-                r#"<?xml version="1.0" encoding="utf-8"?>
-<entry xmlns="http://www.w3.org/2005/Atom"
-       xmlns:app="http://www.w3.org/2007/app">
-  <title>{{title}}</title>
-  <author><name>{{author_name}}</name></author>
-  <content type="text/plain">{{content}}</content>
-  <updated>{{updated}}</updated>
-  {{#each categories}}<category term="{{this}}" />{{/each}}
-  <app:control>
-    <app:draft>{{#if draft}}yes{{else}}no{{/if}}</app:draft>
-  </app:control>
-</entry>"#,
-                &json!(self),
-            )
-            .expect("render_template")
-    }
-
     pub fn to_json(&self) -> String {
         json!(self).to_string()
     }
@@ -164,27 +142,6 @@ mod test {
                 updated: "2020-02-07T23:59:59Z".into(),
                 draft: true,
             }
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn to_create_request_body_xml() -> anyhow::Result<()> {
-        let entry = new_dummy()?;
-        assert_eq!(
-            entry.to_request_body_xml(),
-            r#"<?xml version="1.0" encoding="utf-8"?>
-<entry xmlns="http://www.w3.org/2005/Atom"
-       xmlns:app="http://www.w3.org/2007/app">
-  <title>TITLE</title>
-  <author><name>AUTHOR_NAME</name></author>
-  <content type="text/plain">CONTENT</content>
-  <updated>2020-02-07T00:00:00Z</updated>
-  <category term="CATEGORY" />
-  <app:control>
-    <app:draft>yes</app:draft>
-  </app:control>
-</entry>"#
         );
         Ok(())
     }
