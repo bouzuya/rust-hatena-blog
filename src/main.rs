@@ -1,5 +1,5 @@
-use hatena_blog::EntryParams;
 use hatena_blog::{Client, Config};
+use hatena_blog::{EntryId, EntryParams};
 use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -30,17 +30,17 @@ pub enum Subcommand {
     #[structopt(name = "delete", about = "Deletes the entry")]
     Delete {
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
-        entry_id: String,
+        entry_id: EntryId,
     },
     #[structopt(name = "get", about = "Gets the entry")]
     Get {
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
-        entry_id: String,
+        entry_id: EntryId,
     },
     #[structopt(name = "update", about = "Updates the entry")]
     Update {
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
-        entry_id: String,
+        entry_id: EntryId,
         #[structopt(
             name = "FILE",
             long = "content",
@@ -82,10 +82,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("{}", entry.to_json());
         }
         Subcommand::Delete { entry_id } => {
-            client.delete_entry(entry_id.as_str()).await?;
+            client.delete_entry(&entry_id).await?;
         }
         Subcommand::Get { entry_id } => {
-            let entry = client.get_entry(entry_id.as_str()).await?;
+            let entry = client.get_entry(&entry_id).await?;
             println!("{}", entry.to_json());
         }
         Subcommand::Update {

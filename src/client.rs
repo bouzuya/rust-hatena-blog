@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 
 use crate::config::Config;
 use crate::entry::Entry;
-use crate::EntryParams;
+use crate::{EntryId, EntryParams};
 use reqwest::{Method, Response, StatusCode};
 use thiserror::Error;
 
@@ -74,13 +74,13 @@ impl Client {
             .await
     }
 
-    pub async fn delete_entry(&self, entry_id: &str) -> Result<(), ClientError> {
+    pub async fn delete_entry(&self, entry_id: &EntryId) -> Result<(), ClientError> {
         self.request(Method::DELETE, &self.member_uri(entry_id), None)
             .await
             .map(|_| ())
     }
 
-    pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
+    pub async fn get_entry(&self, entry_id: &EntryId) -> Result<Entry, ClientError> {
         self.request(Method::GET, &self.member_uri(entry_id), None)
             .await?
             .into_entry()
@@ -89,7 +89,7 @@ impl Client {
 
     pub async fn update_entry(
         &self,
-        entry_id: &str,
+        entry_id: &EntryId,
         entry_params: EntryParams,
     ) -> Result<Entry, ClientError> {
         let body = entry_params.into_xml();
@@ -107,7 +107,7 @@ impl Client {
         )
     }
 
-    fn member_uri(&self, entry_id: &str) -> String {
+    fn member_uri(&self, entry_id: &EntryId) -> String {
         let config = &self.config;
         format!(
             "https://blog.hatena.ne.jp/{}/{}/atom/entry/{}",
@@ -157,13 +157,15 @@ mod test {
     }
 
     #[test]
-    fn member_uri() {
+    fn member_uri() -> anyhow::Result<()> {
         let config = Config::new("HATENA_ID", "BLOG_ID", "API_KEY");
         let client = Client::new(&config);
+        let entry_id = "ENTRY_ID".parse::<EntryId>()?;
         assert_eq!(
-            client.member_uri("ENTRY_ID"),
+            client.member_uri(&entry_id),
             "https://blog.hatena.ne.jp/HATENA_ID/BLOG_ID/atom/entry/ENTRY_ID"
-        )
+        );
+        Ok(())
     }
 
     #[test]
