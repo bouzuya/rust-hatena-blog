@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 
 use crate::config::Config;
 use crate::entry::Entry;
+use crate::EntryId;
 use reqwest::{Method, Response, StatusCode};
 use thiserror::Error;
 
@@ -39,7 +40,7 @@ impl EntryParams {
         }
     }
 
-    fn into_entry(self, id: String) -> Entry {
+    fn into_entry(self, id: EntryId) -> Entry {
         Entry::new(
             id,
             self.title,
@@ -108,7 +109,8 @@ impl Client {
     }
 
     pub async fn create_entry(&self, entry_params: EntryParams) -> Result<Entry, ClientError> {
-        let entry = entry_params.into_entry("dummy".to_string());
+        // FIXME
+        let entry = entry_params.into_entry("dummy".parse().unwrap());
         let xml = entry.to_request_body_xml();
         self.request(Method::POST, &self.collection_uri(), Some(xml))
             .await?
@@ -134,7 +136,8 @@ impl Client {
         entry_id: &str,
         entry_params: EntryParams,
     ) -> Result<Entry, ClientError> {
-        let entry = entry_params.into_entry("dummy".to_string());
+        // FIXME
+        let entry = entry_params.into_entry("dummy".parse().unwrap());
         let xml = entry.to_request_body_xml();
         self.request(Method::PUT, &self.member_uri(entry_id), Some(xml))
             .await?

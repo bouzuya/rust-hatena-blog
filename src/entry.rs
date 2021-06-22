@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use crate::EntryId;
 use atom_syndication::Feed;
 use handlebars::Handlebars;
 use serde::Serialize;
@@ -12,7 +13,7 @@ pub struct Entry {
     categories: Vec<String>,
     pub content: String,
     draft: bool,
-    id: String,
+    id: EntryId,
     title: String,
     updated: String, // YYYY-MM-DDTHH:MM:SS
 }
@@ -29,13 +30,14 @@ fn get_draft(entry: &atom_syndication::Entry) -> bool {
         .unwrap_or(false)
 }
 
-fn get_id(entry: &atom_syndication::Entry) -> Option<String> {
+fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
     // https://blog.hatena.ne.jp/{HATENA_ID}/{BLOG_ID}/atom/entry/{ENTRY_ID}
     entry
         .links
         .iter()
         .find(|link| link.rel == "edit")
-        .and_then(|link| link.href.split('/').last().map(|id| id.to_string()))
+        .and_then(|link| link.href.split('/').last())
+        .and_then(|id| id.parse().ok())
 }
 
 #[derive(Debug, Eq, Error, PartialEq)]
@@ -72,7 +74,7 @@ impl Entry {
     }
 
     pub fn new(
-        id: String,
+        id: EntryId,
         title: String,
         author_name: String,
         categories: Vec<String>,
@@ -129,23 +131,23 @@ mod test {
 
     use super::*;
 
-    fn new_dummy() -> Entry {
-        Entry::new(
-            "ID".to_string(),
+    fn new_dummy() -> anyhow::Result<Entry> {
+        Ok(Entry::new(
+            "ID".parse::<EntryId>()?,
             "TITLE".to_string(),
             "AUTHOR_NAME".to_string(),
             vec!["CATEGORY".to_string()],
             "CONTENT".to_string(),
             "2020-02-07T00:00:00Z".to_string(),
             true,
-        )
+        ))
     }
 
     #[test]
-    fn new() {
+    fn new() -> anyhow::Result<()> {
         assert_eq!(
             Entry::new(
-                "ID1".to_string(),
+                "ID1".parse::<EntryId>()?,
                 "TITLE1".to_string(),
                 "AUTHOR_NAME1".to_string(),
                 vec!["CATEGORY1".to_string(), "CATEGORY2".to_string()],
@@ -154,7 +156,7 @@ mod test {
                 true,
             ),
             Entry {
-                id: "ID1".to_string(),
+                id: "ID1".parse::<EntryId>()?,
                 title: "TITLE1".into(),
                 author_name: "AUTHOR_NAME1".into(),
                 categories: vec!["CATEGORY1".into(), "CATEGORY2".into()],
@@ -162,12 +164,13 @@ mod test {
                 updated: "2020-02-07T23:59:59Z".into(),
                 draft: true,
             }
-        )
+        );
+        Ok(())
     }
 
     #[test]
-    fn to_create_request_body_xml() {
-        let entry = new_dummy();
+    fn to_create_request_body_xml() -> anyhow::Result<()> {
+        let entry = new_dummy()?;
         assert_eq!(
             entry.to_request_body_xml(),
             r#"<?xml version="1.0" encoding="utf-8"?>
@@ -183,6 +186,7 @@ mod test {
   </app:control>
 </entry>"#
         );
+        Ok(())
     }
 
     const GET_ENTRY_RESPONSE_XML: &str = r#"<?xml version="1.0" encoding="utf-8"?>
@@ -221,11 +225,11 @@ mod test {
 </entry>"#;
 
     #[test]
-    fn from_entry_xml() {
+    fn from_entry_xml() -> anyhow::Result<()> {
         assert_eq!(
             Entry::from_entry_xml(GET_ENTRY_RESPONSE_XML),
             Ok(Entry::new(
-                "2500000000".to_string(),
+                "2500000000".parse::<EntryId>()?,
                 "記事タイトル".to_string(),
                 "{はてなID}".to_string(),
                 vec!["Scala".to_string(), "Perl".to_string()],
@@ -234,6 +238,7 @@ mod test {
                 false,
             ))
         );
+        Ok(())
     }
 
     #[test]
@@ -387,11 +392,12 @@ mod test {
     }
 
     #[test]
-    fn to_json() {
-        let entry = new_dummy();
+    fn to_json() -> anyhow::Result<()> {
+        let entry = new_dummy()?;
         assert_eq!(
             entry.to_json(),
             r#"{"author_name":"AUTHOR_NAME","categories":["CATEGORY"],"content":"CONTENT","draft":true,"id":"ID","title":"TITLE","updated":"2020-02-07T00:00:00Z"}"#
         );
+        Ok(())
     }
 }
