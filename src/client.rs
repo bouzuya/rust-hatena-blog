@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use crate::config::Config;
 use crate::entry::Entry;
 use reqwest::{Method, Response, StatusCode};
@@ -28,21 +30,32 @@ pub enum ClientError {
     UnknownStatusCode,
 }
 
-fn check_status(response: &Response) -> Result<(), ClientError> {
-    match response.status() {
-        status_code if status_code.is_success() => Ok(()),
-        StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
-        StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
-        StatusCode::NOT_FOUND => Err(ClientError::NotFound),
-        StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
-        StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
-        _ => Err(ClientError::UnknownStatusCode),
+#[derive(Debug)]
+struct HatenaBlogResponse {
+    response: Response,
+}
+
+impl HatenaBlogResponse {
+    async fn into_entry(self) -> Result<Entry, ClientError> {
+        let body = self.response.text().await?;
+        Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
     }
 }
 
-async fn new_response_from_reqwest_response(response: Response) -> Result<Entry, ClientError> {
-    let body = response.text().await?;
-    Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
+impl TryFrom<Response> for HatenaBlogResponse {
+    type Error = ClientError;
+
+    fn try_from(response: Response) -> Result<Self, Self::Error> {
+        match response.status() {
+            status_code if status_code.is_success() => Ok(Self { response }),
+            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
+            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
+            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
+            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
+            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
+            _ => Err(ClientError::UnknownStatusCode),
+        }
+    }
 }
 
 impl Client {
@@ -71,10 +84,10 @@ impl Client {
             draft,
         );
         let xml = entry.to_create_request_body_xml();
-        let response = self
-            .request(Method::POST, &self.collection_uri(), Some(xml))
-            .await?;
-        new_response_from_reqwest_response(response).await
+        self.request(Method::POST, &self.collection_uri(), Some(xml))
+            .await?
+            .into_entry()
+            .await
     }
 
     pub async fn delete_entry(&self, entry_id: &str) -> Result<(), ClientError> {
@@ -84,10 +97,10 @@ impl Client {
     }
 
     pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
-        let response = self
-            .request(Method::GET, &self.member_uri(entry_id), None)
-            .await?;
-        new_response_from_reqwest_response(response).await
+        self.request(Method::GET, &self.member_uri(entry_id), None)
+            .await?
+            .into_entry()
+            .await
     }
 
     fn collection_uri(&self) -> String {
@@ -111,7 +124,7 @@ impl Client {
         method: Method,
         url: &str,
         body: Option<String>,
-    ) -> Result<Response, ClientError> {
+    ) -> Result<HatenaBlogResponse, ClientError> {
         let config = &self.config;
         let client = reqwest::Client::new();
         let request = client
@@ -123,7 +136,7 @@ impl Client {
             request
         };
         let response = request.send().await?;
-        check_status(&response).map(|_| response)
+        HatenaBlogResponse::try_from(response)
     }
 }
 
