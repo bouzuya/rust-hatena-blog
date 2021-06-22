@@ -91,7 +91,7 @@ impl Entry {
         }
     }
 
-    pub fn to_create_request_body_xml(&self) -> String {
+    pub fn to_request_body_xml(&self) -> String {
         let registry = Handlebars::new();
         registry
             .render_template(
@@ -169,7 +169,7 @@ mod test {
     fn to_create_request_body_xml() {
         let entry = new_dummy();
         assert_eq!(
-            entry.to_create_request_body_xml(),
+            entry.to_request_body_xml(),
             r#"<?xml version="1.0" encoding="utf-8"?>
 <entry xmlns="http://www.w3.org/2005/Atom"
        xmlns:app="http://www.w3.org/2007/app">

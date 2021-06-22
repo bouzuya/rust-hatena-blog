@@ -83,7 +83,7 @@ impl Client {
             updated,
             draft,
         );
-        let xml = entry.to_create_request_body_xml();
+        let xml = entry.to_request_body_xml();
         self.request(Method::POST, &self.collection_uri(), Some(xml))
             .await?
             .into_entry()
@@ -98,6 +98,32 @@ impl Client {
 
     pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
         self.request(Method::GET, &self.member_uri(entry_id), None)
+            .await?
+            .into_entry()
+            .await
+    }
+
+    pub async fn update_entry(
+        &self,
+        entry_id: &str,
+        author_name: String,
+        title: String,
+        content: String,
+        updated: String, // YYYY-MM-DDTHH:MM:SS
+        categories: Vec<String>,
+        draft: bool,
+    ) -> Result<Entry, ClientError> {
+        let entry = Entry::new(
+            "dummy".to_string(),
+            title,
+            author_name,
+            categories,
+            content,
+            updated,
+            draft,
+        );
+        let xml = entry.to_request_body_xml();
+        self.request(Method::PUT, &self.member_uri(entry_id), Some(xml))
             .await?
             .into_entry()
             .await
@@ -176,7 +202,17 @@ mod test {
     }
 
     #[test]
+    fn delete_entry() {
+        // See: examples/delete_entry.rs
+    }
+
+    #[test]
     fn get_entry() {
         // See: examples/get_entry.rs
+    }
+
+    #[test]
+    fn update_entry() {
+        // See: examples/update_entry.rs
     }
 }
