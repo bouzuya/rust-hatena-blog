@@ -37,6 +37,23 @@ pub enum Subcommand {
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
         entry_id: String,
     },
+    #[structopt(name = "update", about = "Updates the entry")]
+    Update {
+        #[structopt(name = "ENTRY_ID", help = "The entry id")]
+        entry_id: String,
+        #[structopt(
+            name = "FILE",
+            long = "content",
+            help = "set content (markdown file only)"
+        )]
+        content: PathBuf,
+        #[structopt(long = "draft", help = "Creates as draft")]
+        draft: bool,
+        #[structopt(long = "title", name = "TITLE", help = "The title")]
+        title: String,
+        #[structopt(long = "updated", name = "UPDATED", help = "The date")]
+        updated: String,
+    },
 }
 
 #[tokio::main]
@@ -69,6 +86,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
         Subcommand::Get { entry_id } => {
             let entry = client.get_entry(entry_id.as_str()).await?;
+            println!("{}", entry.to_json());
+        }
+        Subcommand::Update {
+            entry_id,
+            content,
+            draft,
+            title,
+            updated,
+        } => {
+            let content = fs::read_to_string(content.as_path())?;
+            let entry = client
+                .update_entry(
+                    &entry_id,
+                    EntryParams::new(
+                        config.hatena_id,
+                        title,
+                        content,
+                        updated,
+                        vec![], // TODO
+                        draft,
+                    ),
+                )
+                .await?;
             println!("{}", entry.to_json());
         }
     }
