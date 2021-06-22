@@ -1,3 +1,4 @@
+use hatena_blog::EntryParams;
 use hatena_blog::{Client, Config};
 use std::fs;
 use std::path::PathBuf;
@@ -52,14 +53,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         } => {
             let content = fs::read_to_string(content.as_path())?;
             let entry = client
-                .create_entry(
+                .create_entry(EntryParams::new(
                     config.hatena_id,
                     title,
                     content,
                     updated,
                     vec![], // TODO
                     draft,
-                )
+                ))
                 .await?;
             println!("{}", entry.to_json());
         }

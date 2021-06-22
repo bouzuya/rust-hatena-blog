@@ -10,6 +10,48 @@ pub struct Client {
     config: Config,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EntryParams {
+    author_name: String,
+    title: String,
+    content: String,
+    updated: String, // YYYY-MM-DDTHH:MM:SS
+    categories: Vec<String>,
+    draft: bool,
+}
+
+impl EntryParams {
+    pub fn new(
+        author_name: String,
+        title: String,
+        content: String,
+        updated: String, // YYYY-MM-DDTHH:MM:SS
+        categories: Vec<String>,
+        draft: bool,
+    ) -> Self {
+        Self {
+            author_name,
+            title,
+            content,
+            updated,
+            categories,
+            draft,
+        }
+    }
+
+    fn into_entry(self, id: String) -> Entry {
+        Entry::new(
+            id,
+            self.title,
+            self.author_name,
+            self.categories,
+            self.content,
+            self.updated,
+            self.draft,
+        )
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ClientError {
     #[error("request error")]
@@ -65,24 +107,8 @@ impl Client {
         }
     }
 
-    pub async fn create_entry(
-        &self,
-        author_name: String,
-        title: String,
-        content: String,
-        updated: String, // YYYY-MM-DDTHH:MM:SS
-        categories: Vec<String>,
-        draft: bool,
-    ) -> Result<Entry, ClientError> {
-        let entry = Entry::new(
-            "dummy".to_string(),
-            title,
-            author_name,
-            categories,
-            content,
-            updated,
-            draft,
-        );
+    pub async fn create_entry(&self, entry_params: EntryParams) -> Result<Entry, ClientError> {
+        let entry = entry_params.into_entry("dummy".to_string());
         let xml = entry.to_request_body_xml();
         self.request(Method::POST, &self.collection_uri(), Some(xml))
             .await?
@@ -106,22 +132,9 @@ impl Client {
     pub async fn update_entry(
         &self,
         entry_id: &str,
-        author_name: String,
-        title: String,
-        content: String,
-        updated: String, // YYYY-MM-DDTHH:MM:SS
-        categories: Vec<String>,
-        draft: bool,
+        entry_params: EntryParams,
     ) -> Result<Entry, ClientError> {
-        let entry = Entry::new(
-            "dummy".to_string(),
-            title,
-            author_name,
-            categories,
-            content,
-            updated,
-            draft,
-        );
+        let entry = entry_params.into_entry("dummy".to_string());
         let xml = entry.to_request_body_xml();
         self.request(Method::PUT, &self.member_uri(entry_id), Some(xml))
             .await?
