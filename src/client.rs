@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::entry::Entry;
-use reqwest::{Response, StatusCode};
+use reqwest::{Method, Response, StatusCode};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -41,7 +41,6 @@ fn check_status(response: &Response) -> Result<(), ClientError> {
 }
 
 async fn new_response_from_reqwest_response(response: Response) -> Result<Entry, ClientError> {
-    check_status(&response)?;
     let body = response.text().await?;
     Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
 }
@@ -62,8 +61,6 @@ impl Client {
         categories: Vec<String>,
         draft: bool,
     ) -> Result<Entry, ClientError> {
-        let config = &self.config;
-        let client = reqwest::Client::new();
         let entry = Entry::new(
             "dummy".to_string(),
             title,
@@ -74,36 +71,21 @@ impl Client {
             draft,
         );
         let xml = entry.to_create_request_body_xml();
-        let url = self.collection_uri();
-        let response = client
-            .post(&url)
-            .basic_auth(&config.hatena_id, Some(&config.api_key))
-            .body(xml)
-            .send()
+        let response = self
+            .request(Method::POST, &self.collection_uri(), Some(xml))
             .await?;
         new_response_from_reqwest_response(response).await
     }
 
     pub async fn delete_entry(&self, entry_id: &str) -> Result<(), ClientError> {
-        let config = &self.config;
-        let client = reqwest::Client::new();
-        let url = self.member_uri(entry_id);
-        let response = client
-            .delete(&url)
-            .basic_auth(&config.hatena_id, Some(&config.api_key))
-            .send()
-            .await?;
-        check_status(&response)
+        self.request(Method::DELETE, &self.member_uri(entry_id), None)
+            .await
+            .map(|_| ())
     }
 
     pub async fn get_entry(&self, entry_id: &str) -> Result<Entry, ClientError> {
-        let config = &self.config;
-        let client = reqwest::Client::new();
-        let url = self.member_uri(entry_id);
-        let response = client
-            .get(&url)
-            .basic_auth(&config.hatena_id, Some(&config.api_key))
-            .send()
+        let response = self
+            .request(Method::GET, &self.member_uri(entry_id), None)
             .await?;
         new_response_from_reqwest_response(response).await
     }
@@ -122,6 +104,26 @@ impl Client {
             "https://blog.hatena.ne.jp/{}/{}/atom/entry/{}",
             config.hatena_id, config.blog_id, entry_id,
         )
+    }
+
+    async fn request(
+        &self,
+        method: Method,
+        url: &str,
+        body: Option<String>,
+    ) -> Result<Response, ClientError> {
+        let config = &self.config;
+        let client = reqwest::Client::new();
+        let request = client
+            .request(method, url)
+            .basic_auth(&config.hatena_id, Some(&config.api_key));
+        let request = if let Some(body) = body {
+            request.body(body)
+        } else {
+            request
+        };
+        let response = request.send().await?;
+        check_status(&response).map(|_| response)
     }
 }
 
