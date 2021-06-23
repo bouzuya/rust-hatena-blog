@@ -1,5 +1,4 @@
-use hatena_blog::{Client, Config};
-use hatena_blog::{EntryId, EntryParams};
+use hatena_blog::{Client, Config, EntryId, EntryParams};
 use std::fs;
 use std::path::PathBuf;
 use structopt::StructOpt;

@@ -1,9 +1,11 @@
+mod entry_params;
 mod response;
 
+pub use self::entry_params::EntryParams;
 use self::response::Response;
 use crate::config::Config;
 use crate::entry::Entry;
-use crate::{EntryId, EntryParams};
+use crate::EntryId;
 use reqwest::Method;
 use std::convert::TryFrom;
 use thiserror::Error;
