@@ -171,6 +171,11 @@ mod test {
     }
 
     #[test]
+    fn list_entries_in_page() {
+        // See: examples/list_entries.rs
+    }
+
+    #[test]
     fn update_entry() {
         // See: examples/update_entry.rs
     }
