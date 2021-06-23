@@ -2,13 +2,12 @@ use crate::client::{ClientError, PartialList};
 use crate::{Entry, EntryId};
 use atom_syndication::Feed;
 use reqwest::{StatusCode, Url};
-use std::convert::TryFrom;
 use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Debug)]
 pub struct Response {
-    response: reqwest::Response,
+    body: String,
 }
 
 #[derive(Debug, Eq, Error, PartialEq)]
@@ -37,13 +36,7 @@ fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
         .and_then(|id| id.parse().ok())
 }
 
-fn from_entry_xml(body: &str) -> Result<Entry, ParseEntry> {
-    let xml = format!(
-        "<feed>{}</feed>",
-        body.strip_prefix(r#"<?xml version="1.0" encoding="utf-8"?>"#)
-            .unwrap_or(body)
-    );
-    let feed = Feed::from_str(xml.as_str()).map_err(|_| ParseEntry)?;
+fn first_entry(feed: &Feed) -> Result<Entry, ParseEntry> {
     let entry = feed.entries().first().ok_or(ParseEntry)?;
     Ok(Entry::new(
         get_id(&entry).ok_or(ParseEntry)?,
@@ -65,40 +58,45 @@ fn from_entry_xml(body: &str) -> Result<Entry, ParseEntry> {
     ))
 }
 
-impl Response {
-    pub async fn into_entry(self) -> Result<Entry, ClientError> {
-        let body = self.response.text().await?;
-        from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
-    }
-
-    pub async fn into_partial_list(self) -> Result<PartialList, ClientError> {
-        let body = self.response.text().await?;
-        let feed = Feed::from_str(body.as_str()).map_err(|_| ClientError::ResponseBody)?;
-        Ok((
-            feed.links
-                .iter()
-                .find(|link| link.rel == "next")
-                .and_then(|link| Url::parse(link.href.as_str()).ok())
-                .and_then(|href| {
-                    href.query_pairs()
-                        .into_iter()
-                        .find(|(name, _)| name == "page")
-                        .map(|(_, value)| value.to_string())
-                }),
-            feed.entries
-                .iter()
-                .map(|entry| get_id(entry).ok_or(ClientError::ResponseBody))
-                .collect::<Result<Vec<EntryId>, ClientError>>()?,
-        ))
-    }
+fn from_entry_xml(body: &str) -> Result<Feed, ParseEntry> {
+    let xml = format!(
+        "<feed>{}</feed>",
+        body.strip_prefix(r#"<?xml version="1.0" encoding="utf-8"?>"#)
+            .unwrap_or(body)
+    );
+    Feed::from_str(xml.as_str()).map_err(|_| ParseEntry)
 }
 
-impl TryFrom<reqwest::Response> for Response {
-    type Error = ClientError;
+fn from_feed_xml(body: &str) -> Result<Feed, ParseEntry> {
+    Feed::from_str(body).map_err(|_| ParseEntry)
+}
 
-    fn try_from(response: reqwest::Response) -> Result<Self, Self::Error> {
+fn partial_list(feed: &Feed) -> Result<PartialList, ParseEntry> {
+    Ok((
+        feed.links
+            .iter()
+            .find(|link| link.rel == "next")
+            .and_then(|link| Url::parse(link.href.as_str()).ok())
+            .and_then(|href| {
+                href.query_pairs()
+                    .into_iter()
+                    .find(|(name, _)| name == "page")
+                    .map(|(_, value)| value.to_string())
+            }),
+        feed.entries
+            .iter()
+            .map(|entry| get_id(entry).ok_or(ParseEntry))
+            .collect::<Result<Vec<EntryId>, ParseEntry>>()?,
+    ))
+}
+
+impl Response {
+    pub async fn try_from(response: reqwest::Response) -> Result<Self, ClientError> {
         match response.status() {
-            status_code if status_code.is_success() => Ok(Self { response }),
+            status_code if status_code.is_success() => {
+                let body = response.text().await?;
+                Ok(Self { body })
+            }
             StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
             StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
             StatusCode::NOT_FOUND => Err(ClientError::NotFound),
@@ -107,13 +105,22 @@ impl TryFrom<reqwest::Response> for Response {
             _ => Err(ClientError::UnknownStatusCode),
         }
     }
+
+    pub fn into_entry(self) -> Result<Entry, ClientError> {
+        let feed = from_entry_xml(self.body.as_str()).map_err(|_| ClientError::ResponseBody)?;
+        first_entry(&feed).map_err(|_| ClientError::ResponseBody)
+    }
+
+    pub fn into_partial_list(self) -> Result<PartialList, ClientError> {
+        let feed = from_feed_xml(self.body.as_str()).map_err(|_| ClientError::ResponseBody)?;
+        partial_list(&feed).map_err(|_| ClientError::ResponseBody)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
-    use anyhow::Context;
     use atom_syndication::{
         extension::{Extension, ExtensionMap},
         Category, Content, FixedDateTime, Link, Person, Text,
@@ -158,8 +165,9 @@ mod tests {
 
     #[test]
     fn from_entry_xml_test() -> anyhow::Result<()> {
+        let feed = from_entry_xml(GET_ENTRY_RESPONSE_XML)?;
         assert_eq!(
-            from_entry_xml(GET_ENTRY_RESPONSE_XML),
+            first_entry(&feed),
             Ok(Entry::new(
                 "2500000000".parse::<EntryId>()?,
                 "記事タイトル".to_string(),
@@ -175,13 +183,7 @@ mod tests {
 
     #[test]
     fn atom_syndication_parse_from_get_entry_xml() -> anyhow::Result<()> {
-        let xml = GET_ENTRY_RESPONSE_XML;
-        let xml = format!(
-            "<feed>{}</feed>",
-            xml.strip_prefix(r#"<?xml version="1.0" encoding="utf-8"?>"#)
-                .context("strip_prefix")?
-        );
-        let feed = atom_syndication::Feed::from_str(xml.as_str())?;
+        let feed = from_entry_xml(GET_ENTRY_RESPONSE_XML)?;
         assert_eq!(feed.entries().len(), 1);
         let entry = feed.entries().first().unwrap().clone();
         assert_eq!(entry.title.as_str(), "記事タイトル");

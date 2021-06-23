@@ -8,7 +8,6 @@ use self::response::Response;
 use crate::entry::Entry;
 use crate::EntryId;
 use reqwest::Method;
-use std::convert::TryFrom;
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -50,7 +49,6 @@ impl Client {
         self.request(Method::POST, &self.collection_uri(None), Some(body))
             .await?
             .into_entry()
-            .await
     }
 
     pub async fn delete_entry(&self, entry_id: &EntryId) -> Result<(), ClientError> {
@@ -63,7 +61,6 @@ impl Client {
         self.request(Method::GET, &self.member_uri(entry_id), None)
             .await?
             .into_entry()
-            .await
     }
 
     pub async fn list_entries_in_page(
@@ -73,7 +70,6 @@ impl Client {
         self.request(Method::GET, &self.collection_uri(page), None)
             .await?
             .into_partial_list()
-            .await
     }
 
     pub async fn update_entry(
@@ -85,7 +81,6 @@ impl Client {
         self.request(Method::PUT, &self.member_uri(entry_id), Some(body))
             .await?
             .into_entry()
-            .await
     }
 
     fn collection_uri(&self, page: Option<&str>) -> String {
@@ -124,7 +119,7 @@ impl Client {
             request
         };
         let response = request.send().await?;
-        Response::try_from(response)
+        Response::try_from(response).await
     }
 }
 
