@@ -6,7 +6,7 @@ use serde_json::json;
 pub struct Entry {
     author_name: String,
     categories: Vec<String>,
-    pub content: String,
+    content: String,
     draft: bool,
     id: EntryId,
     title: String,
