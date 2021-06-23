@@ -13,9 +13,11 @@ struct Opt {
 pub enum Subcommand {
     #[structopt(name = "create", about = "Creates a new entry")]
     Create {
+        #[structopt(long = "category", name = "CATEGORY", help = "The category")]
+        categories: Vec<String>,
         #[structopt(
-            name = "FILE",
             long = "content",
+            name = "FILE",
             help = "set content (markdown file only)"
         )]
         content: PathBuf,
@@ -43,11 +45,13 @@ pub enum Subcommand {
     },
     #[structopt(name = "update", about = "Updates the entry")]
     Update {
+        #[structopt(long = "category", name = "CATEGORY", help = "The category")]
+        categories: Vec<String>,
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
         entry_id: EntryId,
         #[structopt(
-            name = "FILE",
             long = "content",
+            name = "FILE",
             help = "set content (markdown file only)"
         )]
         content: PathBuf,
@@ -67,6 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = Client::new(&config);
     match opt.subcommand {
         Subcommand::Create {
+            categories,
             content,
             draft,
             title,
@@ -79,7 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     title,
                     content,
                     updated,
-                    vec![], // TODO
+                    categories,
                     draft,
                 ))
                 .await?;
@@ -118,6 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             );
         }
         Subcommand::Update {
+            categories,
             entry_id,
             content,
             draft,
@@ -128,14 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let entry = client
                 .update_entry(
                     &entry_id,
-                    EntryParams::new(
-                        config.hatena_id,
-                        title,
-                        content,
-                        updated,
-                        vec![], // TODO
-                        draft,
-                    ),
+                    EntryParams::new(config.hatena_id, title, content, updated, categories, draft),
                 )
                 .await?;
             println!("{}", entry.to_json());
