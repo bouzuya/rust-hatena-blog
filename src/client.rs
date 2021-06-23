@@ -1,11 +1,11 @@
-use std::convert::TryFrom;
-use std::str::FromStr;
+mod response;
 
+use self::response::Response;
 use crate::config::Config;
-use crate::entry::{get_id, Entry};
+use crate::entry::Entry;
 use crate::{EntryId, EntryParams};
-use atom_syndication::Feed;
-use reqwest::{Method, Response, StatusCode, Url};
+use reqwest::Method;
+use std::convert::TryFrom;
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -33,56 +33,7 @@ pub enum ClientError {
     UnknownStatusCode,
 }
 
-#[derive(Debug)]
-struct HatenaBlogResponse {
-    response: Response,
-}
-
-impl HatenaBlogResponse {
-    async fn into_entry(self) -> Result<Entry, ClientError> {
-        let body = self.response.text().await?;
-        Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
-    }
-
-    async fn into_partial_list(self) -> Result<PartialList, ClientError> {
-        let body = self.response.text().await?;
-        let feed = Feed::from_str(body.as_str()).map_err(|_| ClientError::ResponseBody)?;
-        Ok((
-            feed.links
-                .iter()
-                .find(|link| link.rel == "next")
-                .and_then(|link| Url::parse(link.href.as_str()).ok())
-                .and_then(|href| {
-                    href.query_pairs()
-                        .into_iter()
-                        .find(|(name, _)| name == "page")
-                        .map(|(_, value)| value.to_string())
-                }),
-            feed.entries
-                .iter()
-                .map(|entry| get_id(entry).ok_or(ClientError::ResponseBody))
-                .collect::<Result<Vec<EntryId>, ClientError>>()?,
-        ))
-    }
-}
-
-impl TryFrom<Response> for HatenaBlogResponse {
-    type Error = ClientError;
-
-    fn try_from(response: Response) -> Result<Self, Self::Error> {
-        match response.status() {
-            status_code if status_code.is_success() => Ok(Self { response }),
-            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
-            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
-            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
-            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
-            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
-            _ => Err(ClientError::UnknownStatusCode),
-        }
-    }
-}
-
-type PartialList = (Option<String>, Vec<EntryId>);
+pub type PartialList = (Option<String>, Vec<EntryId>);
 
 impl Client {
     pub fn new(config: &Config) -> Self {
@@ -158,7 +109,7 @@ impl Client {
         method: Method,
         url: &str,
         body: Option<String>,
-    ) -> Result<HatenaBlogResponse, ClientError> {
+    ) -> Result<Response, ClientError> {
         let config = &self.config;
         let client = reqwest::Client::new();
         let request = client
@@ -170,7 +121,7 @@ impl Client {
             request
         };
         let response = request.send().await?;
-        HatenaBlogResponse::try_from(response)
+        Response::try_from(response)
     }
 }
 
