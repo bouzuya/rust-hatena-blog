@@ -1,9 +1,10 @@
+mod config;
 mod entry_params;
 mod response;
 
+pub use self::config::Config;
 pub use self::entry_params::EntryParams;
 use self::response::Response;
-use crate::config::Config;
 use crate::entry::Entry;
 use crate::EntryId;
 use reqwest::Method;
