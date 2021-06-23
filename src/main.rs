@@ -36,6 +36,11 @@ pub enum Subcommand {
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
         entry_id: EntryId,
     },
+    #[structopt(name = "list", about = "Lists the entries")]
+    List {
+        #[structopt(long = "page", name = "PAGE", help = "The page")]
+        page: Option<String>,
+    },
     #[structopt(name = "update", about = "Updates the entry")]
     Update {
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
@@ -86,6 +91,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Subcommand::Get { entry_id } => {
             let entry = client.get_entry(&entry_id).await?;
             println!("{}", entry.to_json());
+        }
+        Subcommand::List { page } => {
+            let (next_page, entry_ids) = client.list_entries_in_page(page.as_deref()).await?;
+            println!(
+                "{}",
+                serde_json::Value::Object({
+                    let mut map = serde_json::Map::new();
+                    if let Some(next_page) = next_page {
+                        map.insert(
+                            "next_page".to_string(),
+                            serde_json::Value::String(next_page),
+                        );
+                    }
+                    map.insert(
+                        "entry_ids".to_string(),
+                        serde_json::Value::Array(
+                            entry_ids
+                                .into_iter()
+                                .map(|entry_id| serde_json::Value::String(entry_id.to_string()))
+                                .collect(),
+                        ),
+                    );
+                    map
+                })
+            );
         }
         Subcommand::Update {
             entry_id,
