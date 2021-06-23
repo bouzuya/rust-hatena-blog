@@ -1,5 +1,6 @@
 use hatena_blog::{Client, Config, EntryId, EntryParams};
 use std::fs;
+use std::io;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -15,11 +16,7 @@ pub enum Subcommand {
     Create {
         #[structopt(long = "category", name = "CATEGORY", help = "The category")]
         categories: Vec<String>,
-        #[structopt(
-            long = "content",
-            name = "FILE",
-            help = "set content (markdown file only)"
-        )]
+        #[structopt(name = "FILE", help = "The file")]
         content: PathBuf,
         #[structopt(long = "draft", help = "Creates as draft")]
         draft: bool,
@@ -49,11 +46,7 @@ pub enum Subcommand {
         categories: Vec<String>,
         #[structopt(name = "ENTRY_ID", help = "The entry id")]
         entry_id: EntryId,
-        #[structopt(
-            long = "content",
-            name = "FILE",
-            help = "set content (markdown file only)"
-        )]
+        #[structopt(name = "FILE", help = "The file")]
         content: PathBuf,
         #[structopt(long = "draft", help = "Creates as draft")]
         draft: bool,
@@ -62,6 +55,20 @@ pub enum Subcommand {
         #[structopt(long = "updated", name = "UPDATED", help = "The date")]
         updated: String,
     },
+}
+
+fn read_content(content: PathBuf) -> anyhow::Result<String> {
+    let (mut stdin_read, mut file_read);
+    let readable: &mut dyn io::Read = if content == PathBuf::from("-") {
+        stdin_read = io::stdin();
+        &mut stdin_read
+    } else {
+        file_read = fs::File::open(content.as_path())?;
+        &mut file_read
+    };
+    let mut content = String::new();
+    readable.read_to_string(&mut content)?;
+    Ok(content)
 }
 
 #[tokio::main]
@@ -77,7 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             title,
             updated,
         } => {
-            let content = fs::read_to_string(content.as_path())?;
+            let content = read_content(content)?;
             let entry = client
                 .create_entry(EntryParams::new(
                     config.hatena_id,
@@ -130,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             title,
             updated,
         } => {
-            let content = fs::read_to_string(content.as_path())?;
+            let content = read_content(content)?;
             let entry = client
                 .update_entry(
                     &entry_id,
