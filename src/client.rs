@@ -1,9 +1,11 @@
 use std::convert::TryFrom;
+use std::str::FromStr;
 
 use crate::config::Config;
-use crate::entry::Entry;
+use crate::entry::{get_id, Entry};
 use crate::{EntryId, EntryParams};
-use reqwest::{Method, Response, StatusCode};
+use atom_syndication::Feed;
+use reqwest::{Method, Response, StatusCode, Url};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -41,6 +43,27 @@ impl HatenaBlogResponse {
         let body = self.response.text().await?;
         Entry::from_entry_xml(body.as_str()).map_err(|_| ClientError::ResponseBody)
     }
+
+    async fn into_partial_list(self) -> Result<PartialList, ClientError> {
+        let body = self.response.text().await?;
+        let feed = Feed::from_str(body.as_str()).map_err(|_| ClientError::ResponseBody)?;
+        Ok((
+            feed.links
+                .iter()
+                .find(|link| link.rel == "next")
+                .and_then(|link| Url::parse(link.href.as_str()).ok())
+                .and_then(|href| {
+                    href.query_pairs()
+                        .into_iter()
+                        .find(|(name, _)| name == "page")
+                        .map(|(_, value)| value.to_string())
+                }),
+            feed.entries
+                .iter()
+                .map(|entry| get_id(entry).ok_or(ClientError::ResponseBody))
+                .collect::<Result<Vec<EntryId>, ClientError>>()?,
+        ))
+    }
 }
 
 impl TryFrom<Response> for HatenaBlogResponse {
@@ -59,6 +82,8 @@ impl TryFrom<Response> for HatenaBlogResponse {
     }
 }
 
+type PartialList = (Option<String>, Vec<EntryId>);
+
 impl Client {
     pub fn new(config: &Config) -> Self {
         Self {
@@ -68,7 +93,7 @@ impl Client {
 
     pub async fn create_entry(&self, entry_params: EntryParams) -> Result<Entry, ClientError> {
         let body = entry_params.into_xml();
-        self.request(Method::POST, &self.collection_uri(), Some(body))
+        self.request(Method::POST, &self.collection_uri(None), Some(body))
             .await?
             .into_entry()
             .await
@@ -87,6 +112,16 @@ impl Client {
             .await
     }
 
+    pub async fn list_entries_in_page(
+        &self,
+        page: Option<&str>,
+    ) -> Result<PartialList, ClientError> {
+        self.request(Method::GET, &self.collection_uri(page), None)
+            .await?
+            .into_partial_list()
+            .await
+    }
+
     pub async fn update_entry(
         &self,
         entry_id: &EntryId,
@@ -99,11 +134,14 @@ impl Client {
             .await
     }
 
-    fn collection_uri(&self) -> String {
+    fn collection_uri(&self, page: Option<&str>) -> String {
         let config = &self.config;
         format!(
-            "https://blog.hatena.ne.jp/{}/{}/atom/entry",
-            config.hatena_id, config.blog_id
+            "https://blog.hatena.ne.jp/{}/{}/atom/entry{}",
+            config.hatena_id,
+            config.blog_id,
+            page.map(|s| format!("?page={}", s))
+                .unwrap_or_else(|| "".to_string())
         )
     }
 
@@ -151,7 +189,7 @@ mod test {
         let config = Config::new("HATENA_ID", "BLOG_ID", "API_KEY");
         let client = Client::new(&config);
         assert_eq!(
-            client.collection_uri(),
+            client.collection_uri(None),
             "https://blog.hatena.ne.jp/HATENA_ID/BLOG_ID/atom/entry"
         )
     }

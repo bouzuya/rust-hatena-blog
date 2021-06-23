@@ -29,7 +29,8 @@ fn get_draft(entry: &atom_syndication::Entry) -> bool {
         .unwrap_or(false)
 }
 
-fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
+// FIXME
+pub fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
     // https://blog.hatena.ne.jp/{HATENA_ID}/{BLOG_ID}/atom/entry/{ENTRY_ID}
     entry
         .links
