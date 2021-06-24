@@ -63,6 +63,12 @@ impl Client {
             .into_entry()
     }
 
+    pub async fn list_categories(&self) -> Result<Vec<String>, ClientError> {
+        self.request(Method::GET, &self.category_document_uri(), None)
+            .await?
+            .into_categories()
+    }
+
     pub async fn list_entries_in_page(
         &self,
         page: Option<&str>,
@@ -70,12 +76,6 @@ impl Client {
         self.request(Method::GET, &self.collection_uri(page), None)
             .await?
             .into_partial_list()
-    }
-
-    pub async fn list_categories(&self) -> Result<Vec<String>, ClientError> {
-        self.request(Method::GET, &self.category_document_uri(), None)
-            .await?
-            .into_categories()
     }
 
     pub async fn update_entry(
@@ -92,15 +92,16 @@ impl Client {
     fn category_document_uri(&self) -> String {
         let config = &self.config;
         format!(
-            "https://blog.hatena.ne.jp/{}/{}/atom/category",
-            config.hatena_id, config.blog_id
+            "{}/{}/{}/atom/category",
+            config.base_url, config.hatena_id, config.blog_id
         )
     }
 
     fn collection_uri(&self, page: Option<&str>) -> String {
         let config = &self.config;
         format!(
-            "https://blog.hatena.ne.jp/{}/{}/atom/entry{}",
+            "{}/{}/{}/atom/entry{}",
+            config.base_url,
             config.hatena_id,
             config.blog_id,
             page.map(|s| format!("?page={}", s))
@@ -111,8 +112,8 @@ impl Client {
     fn member_uri(&self, entry_id: &EntryId) -> String {
         let config = &self.config;
         format!(
-            "https://blog.hatena.ne.jp/{}/{}/atom/entry/{}",
-            config.hatena_id, config.blog_id, entry_id,
+            "{}/{}/{}/atom/entry/{}",
+            config.base_url, config.hatena_id, config.blog_id, entry_id,
         )
     }
 
@@ -141,30 +142,32 @@ impl Client {
 mod test {
     use super::*;
 
+    fn config() -> Config {
+        Config::new("HATENA_ID", "BASE_URL", "BLOG_ID", "API_KEY")
+    }
+
     #[test]
     fn new() {
-        let config = Config::new("HATENA_ID", "BLOG_ID", "API_KEY");
+        let config = config();
         assert_eq!(Client::new(&config), super::Client { config })
     }
 
     #[test]
     fn collection_uri() {
-        let config = Config::new("HATENA_ID", "BLOG_ID", "API_KEY");
-        let client = Client::new(&config);
+        let client = Client::new(&config());
         assert_eq!(
             client.collection_uri(None),
-            "https://blog.hatena.ne.jp/HATENA_ID/BLOG_ID/atom/entry"
+            "BASE_URL/HATENA_ID/BLOG_ID/atom/entry"
         )
     }
 
     #[test]
     fn member_uri() -> anyhow::Result<()> {
-        let config = Config::new("HATENA_ID", "BLOG_ID", "API_KEY");
-        let client = Client::new(&config);
+        let client = Client::new(&config());
         let entry_id = "ENTRY_ID".parse::<EntryId>()?;
         assert_eq!(
             client.member_uri(&entry_id),
-            "https://blog.hatena.ne.jp/HATENA_ID/BLOG_ID/atom/entry/ENTRY_ID"
+            "BASE_URL/HATENA_ID/BLOG_ID/atom/entry/ENTRY_ID"
         );
         Ok(())
     }
@@ -182,6 +185,11 @@ mod test {
     #[test]
     fn get_entry() {
         // See: examples/get_entry.rs
+    }
+
+    #[test]
+    fn list_categories() {
+        // See: examples/list_categories.rs
     }
 
     #[test]

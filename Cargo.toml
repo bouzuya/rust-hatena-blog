@@ -21,4 +21,5 @@ tokio = { version = "0.2.11", features = ["full"] }
 [dev-dependencies]
 anyhow = "1.0.41"
 assert_cmd = "0.12.0"
+mockito = "0.30.0"
 predicates = "1.0.2"
