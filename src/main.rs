@@ -1,4 +1,5 @@
 use hatena_blog::{Client, Config, EntryId, EntryParams};
+use serde_json::json;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
@@ -40,6 +41,8 @@ pub enum Subcommand {
         #[structopt(long = "page", name = "PAGE", help = "The page")]
         page: Option<String>,
     },
+    #[structopt(name = "list-categories", about = "Lists all categories")]
+    ListCategories,
     #[structopt(name = "update", about = "Updates the entry")]
     Update {
         #[structopt(long = "category", name = "CATEGORY", help = "The category")]
@@ -128,6 +131,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     map
                 })
             );
+        }
+        Subcommand::ListCategories => {
+            let categories = client.list_categories().await?;
+            println!("{}", json!(categories));
         }
         Subcommand::Update {
             categories,
