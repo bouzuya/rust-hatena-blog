@@ -6,7 +6,7 @@ Hatena Blog CLI (unofficial).
 
 ```console
 $ hatena-blog help
-hatena-blog 0.8.0
+hatena-blog 0.9.0
 
 USAGE:
     hatena-blog <SUBCOMMAND>
@@ -16,10 +16,11 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    create    Creates a new entry
-    delete    Deletes the entry
-    get       Gets the entry
-    help      Prints this message or the help of the given subcommand(s)
-    list      Lists the entries
-    update    Updates the entry
+    create             Creates a new entry
+    delete             Deletes the entry
+    get                Gets the entry
+    help               Prints this message or the help of the given subcommand(s)
+    list               Lists the entries
+    list-categories    Lists all categories
+    update             Updates the entry
 ```
