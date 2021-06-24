@@ -1,6 +1,11 @@
 use crate::client::{ClientError, PartialList};
 use crate::{Entry, EntryId};
+use anyhow::anyhow;
 use atom_syndication::Feed;
+use quick_xml::{
+    events::{attributes::Attributes, Event},
+    Reader,
+};
 use reqwest::{StatusCode, Url};
 use std::str::FromStr;
 use thiserror::Error;
@@ -13,6 +18,10 @@ pub struct Response {
 #[derive(Debug, Eq, Error, PartialEq)]
 #[error("parse entry error")]
 pub struct ParseEntry;
+
+#[derive(Debug, Eq, Error, PartialEq)]
+#[error("parse category error")]
+pub struct ParseCategory;
 
 fn get_draft(entry: &atom_syndication::Entry) -> bool {
     entry
@@ -71,6 +80,92 @@ fn from_feed_xml(body: &str) -> Result<Feed, ParseEntry> {
     Feed::from_str(body).map_err(|_| ParseEntry)
 }
 
+fn categories_from_reader(
+    ns_buf: &mut Vec<u8>,
+    reader: &mut Reader<&[u8]>,
+    _attrs: Attributes,
+) -> anyhow::Result<Vec<String>> {
+    let mut categories = vec![];
+    let mut buf = vec![];
+    loop {
+        match reader.read_namespaced_event(&mut buf, ns_buf) {
+            Ok(ns_event) => match ns_event {
+                (Some(b"http://www.w3.org/2005/Atom"), Event::Empty(ref e))
+                    if e.local_name() == b"category" =>
+                {
+                    for attr in e.attributes() {
+                        let attr = attr?;
+                        if attr.key == b"term" {
+                            let value = attr.unescaped_value()?;
+                            categories.push(String::from_utf8(value.to_vec())?);
+                        }
+                    }
+                }
+                (Some(b"http://www.w3.org/2007/app"), Event::End(ref e))
+                    if e.local_name() == b"categories" =>
+                {
+                    break
+                }
+                (_, Event::Eof) => return Err(anyhow!("eof")),
+                _ => {}
+            },
+            Err(e) => return Err(anyhow!(e)),
+        }
+        buf.clear();
+    }
+    Ok(categories)
+}
+
+fn from_category_document_xml(xml: &str) -> anyhow::Result<Vec<String>> {
+    let mut reader = Reader::from_str(xml);
+    reader.trim_text(true);
+
+    let mut categories = None;
+    let mut buf = vec![];
+    let mut ns_buf = vec![];
+    loop {
+        match reader.read_namespaced_event(&mut buf, &mut ns_buf) {
+            Ok(ns_event) => match ns_event {
+                (Some(b"http://www.w3.org/2007/app"), Event::Start(ref e))
+                    if e.local_name() == b"categories" =>
+                {
+                    match categories {
+                        None => {
+                            categories = Some(categories_from_reader(
+                                &mut ns_buf,
+                                &mut reader,
+                                e.attributes(),
+                            )?);
+                        }
+                        Some(_) => {
+                            return Err(anyhow!("too many <app:categories>"));
+                        }
+                    }
+                }
+                (Some(b"http://www.w3.org/2007/app"), Event::Empty(ref e))
+                    if e.local_name() == b"categories" =>
+                {
+                    match categories {
+                        None => {
+                            return Err(anyhow!(
+                                r#"<app:categories href="{CATEGORY_DOCUMENT}" /> is not supported"#
+                            ));
+                        }
+                        Some(_) => {
+                            return Err(anyhow!("too many <app:categories>"));
+                        }
+                    }
+                }
+                (_, Event::Eof) => break,
+                _ => {}
+            },
+            Err(e) => return Err(anyhow!(e)),
+        }
+        buf.clear();
+    }
+    categories.ok_or_else(|| anyhow!("no <app:categories>"))
+}
+
 fn partial_list(feed: &Feed) -> Result<PartialList, ParseEntry> {
     Ok((
         feed.links
@@ -114,6 +209,10 @@ impl Response {
     pub fn into_partial_list(self) -> Result<PartialList, ClientError> {
         let feed = from_feed_xml(self.body.as_str()).map_err(|_| ClientError::ResponseBody)?;
         partial_list(&feed).map_err(|_| ClientError::ResponseBody)
+    }
+
+    pub fn into_categories(self) -> Result<Vec<String>, ClientError> {
+        from_category_document_xml(self.body.as_str()).map_err(|_| ClientError::ResponseBody)
     }
 }
 
@@ -322,6 +421,28 @@ mod tests {
             });
             extensions
         });
+        Ok(())
+    }
+
+    const CATEGORY_DOCUMENT_XML: &str = r#"<?xml version="1.0" encoding="utf-8"?>
+    <app:categories
+        xmlns:app="http://www.w3.org/2007/app"
+        xmlns:atom="http://www.w3.org/2005/Atom"
+        fixed="no">
+      <atom:category term="Perl" />
+      <atom:category term="Scala" />
+    </app:categories>"#;
+
+    #[test]
+    fn category_document_test() -> anyhow::Result<()> {
+        let categories = from_category_document_xml(CATEGORY_DOCUMENT_XML)?;
+        assert_eq!(
+            categories,
+            ["Perl", "Scala"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+        );
         Ok(())
     }
 }

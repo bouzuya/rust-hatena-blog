@@ -72,6 +72,12 @@ impl Client {
             .into_partial_list()
     }
 
+    pub async fn list_categories(&self) -> Result<Vec<String>, ClientError> {
+        self.request(Method::GET, &self.category_document_uri(), None)
+            .await?
+            .into_categories()
+    }
+
     pub async fn update_entry(
         &self,
         entry_id: &EntryId,
@@ -81,6 +87,14 @@ impl Client {
         self.request(Method::PUT, &self.member_uri(entry_id), Some(body))
             .await?
             .into_entry()
+    }
+
+    fn category_document_uri(&self) -> String {
+        let config = &self.config;
+        format!(
+            "https://blog.hatena.ne.jp/{}/{}/atom/category",
+            config.hatena_id, config.blog_id
+        )
     }
 
     fn collection_uri(&self, page: Option<&str>) -> String {

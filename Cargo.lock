@@ -484,6 +484,7 @@ dependencies = [
  "atom_syndication",
  "handlebars",
  "predicates",
+ "quick-xml",
  "reqwest",
  "serde",
  "serde_json",
