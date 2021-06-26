@@ -1,7 +1,5 @@
-use hatena_blog::{Client, Config, EntryId, EntryParams};
-use serde_json::json;
-use std::fs;
-use std::io;
+use hatena_blog::command;
+use hatena_blog::EntryId;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -60,25 +58,9 @@ pub enum Subcommand {
     },
 }
 
-fn read_content(content: PathBuf) -> anyhow::Result<String> {
-    let (mut stdin_read, mut file_read);
-    let readable: &mut dyn io::Read = if content == PathBuf::from("-") {
-        stdin_read = io::stdin();
-        &mut stdin_read
-    } else {
-        file_read = fs::File::open(content.as_path())?;
-        &mut file_read
-    };
-    let mut content = String::new();
-    readable.read_to_string(&mut content)?;
-    Ok(content)
-}
-
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
-    let config = Config::new_from_env().expect("invalid env");
-    let client = Client::new(&config);
     match opt.subcommand {
         Subcommand::Create {
             categories,
@@ -86,56 +68,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             draft,
             title,
             updated,
-        } => {
-            let content = read_content(content)?;
-            let entry = client
-                .create_entry(EntryParams::new(
-                    config.hatena_id,
-                    title,
-                    content,
-                    updated,
-                    categories,
-                    draft,
-                ))
-                .await?;
-            println!("{}", entry.to_json());
-        }
-        Subcommand::Delete { entry_id } => {
-            client.delete_entry(&entry_id).await?;
-        }
-        Subcommand::Get { entry_id } => {
-            let entry = client.get_entry(&entry_id).await?;
-            println!("{}", entry.to_json());
-        }
-        Subcommand::List { page } => {
-            let (next_page, entry_ids) = client.list_entries_in_page(page.as_deref()).await?;
-            println!(
-                "{}",
-                serde_json::Value::Object({
-                    let mut map = serde_json::Map::new();
-                    if let Some(next_page) = next_page {
-                        map.insert(
-                            "next_page".to_string(),
-                            serde_json::Value::String(next_page),
-                        );
-                    }
-                    map.insert(
-                        "entry_ids".to_string(),
-                        serde_json::Value::Array(
-                            entry_ids
-                                .into_iter()
-                                .map(|entry_id| serde_json::Value::String(entry_id.to_string()))
-                                .collect(),
-                        ),
-                    );
-                    map
-                })
-            );
-        }
-        Subcommand::ListCategories => {
-            let categories = client.list_categories().await?;
-            println!("{}", json!(categories));
-        }
+        } => command::create(categories, content, draft, title, updated).await,
+        Subcommand::Delete { entry_id } => command::delete(entry_id).await,
+        Subcommand::Get { entry_id } => command::get(entry_id).await,
+        Subcommand::List { page } => command::list(page).await,
+        Subcommand::ListCategories => command::list_categories().await,
         Subcommand::Update {
             categories,
             entry_id,
@@ -143,16 +80,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             draft,
             title,
             updated,
-        } => {
-            let content = read_content(content)?;
-            let entry = client
-                .update_entry(
-                    &entry_id,
-                    EntryParams::new(config.hatena_id, title, content, updated, categories, draft),
-                )
-                .await?;
-            println!("{}", entry.to_json());
-        }
+        } => command::update(categories, entry_id, content, draft, title, updated).await,
     }
-    Ok(())
 }

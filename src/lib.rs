@@ -1,4 +1,5 @@
 mod client;
+pub mod command;
 mod entry;
 mod entry_id;
 
