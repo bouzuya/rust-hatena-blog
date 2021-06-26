@@ -17,10 +17,12 @@ pub enum ConfigError {
 }
 
 impl Config {
-    pub fn new(hatena_id: &str, base_url: &str, blog_id: &str, api_key: &str) -> Self {
+    pub fn new(hatena_id: &str, base_url: Option<&str>, blog_id: &str, api_key: &str) -> Self {
         Config {
             api_key: api_key.into(),
-            base_url: base_url.into(),
+            base_url: base_url
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "https://blog.hatena.ne.jp".to_string()),
             blog_id: blog_id.into(),
             hatena_id: hatena_id.into(),
         }
@@ -28,11 +30,15 @@ impl Config {
 
     pub fn new_from_env() -> Result<Self, ConfigError> {
         let api_key = env::var("HATENA_API_KEY").map_err(|_| ConfigError::InvalidVar)?;
-        let base_url = env::var("HATENA_BLOG_BASE_URL")
-            .unwrap_or_else(|_| "https://blog.hatena.ne.jp".to_string());
+        let base_url = env::var("HATENA_BLOG_BASE_URL").ok();
         let blog_id = env::var("HATENA_BLOG_ID").map_err(|_| ConfigError::InvalidVar)?;
         let hatena_id = env::var("HATENA_ID").map_err(|_| ConfigError::InvalidVar)?;
-        Ok(Config::new(&hatena_id, &base_url, &blog_id, &api_key))
+        Ok(Config::new(
+            &hatena_id,
+            base_url.as_deref(),
+            &blog_id,
+            &api_key,
+        ))
     }
 }
 
@@ -43,7 +49,7 @@ mod test {
     #[test]
     fn config_new() {
         assert_eq!(
-            Config::new("HATENA_ID", "BASE_URL", "BLOG_ID", "API_KEY"),
+            Config::new("HATENA_ID", Some("BASE_URL"), "BLOG_ID", "API_KEY"),
             Config {
                 api_key: "API_KEY".into(),
                 base_url: "BASE_URL".into(),

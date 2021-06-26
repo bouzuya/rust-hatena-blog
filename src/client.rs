@@ -160,7 +160,7 @@ mod test {
     use super::*;
 
     fn config() -> Config {
-        Config::new("HATENA_ID", "BASE_URL", "BLOG_ID", "API_KEY")
+        Config::new("HATENA_ID", Some("BASE_URL"), "BLOG_ID", "API_KEY")
     }
 
     #[test]
