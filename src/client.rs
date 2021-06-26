@@ -6,10 +6,10 @@ pub use self::config::Config;
 pub use self::entry_params::EntryParams;
 use self::response::{
     CreateEntryResponse, DeleteEntryResponse, GetEntryResponse, ListCategoriesResponse,
-    ListEntriesResponse, Response, UpdateEntryResponse,
+    ListEntriesResponse, UpdateEntryResponse,
 };
 use crate::EntryId;
-use reqwest::Method;
+use reqwest::{Method, StatusCode};
 use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -130,7 +130,7 @@ impl Client {
         method: Method,
         url: &str,
         body: Option<String>,
-    ) -> Result<Response, ClientError> {
+    ) -> Result<String, ClientError> {
         let config = &self.config;
         let client = reqwest::Client::new();
         let request = client
@@ -142,7 +142,18 @@ impl Client {
             request
         };
         let response = request.send().await?;
-        Response::try_from(response).await
+        match response.status() {
+            status_code if status_code.is_success() => {
+                let body = response.text().await?;
+                Ok(body)
+            }
+            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
+            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
+            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
+            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
+            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
+            _ => Err(ClientError::UnknownStatusCode),
+        }
     }
 }
 

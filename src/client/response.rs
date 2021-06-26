@@ -1,4 +1,4 @@
-use crate::client::{ClientError, PartialList};
+use crate::client::PartialList;
 use crate::{Entry, EntryId};
 use anyhow::anyhow;
 use atom_syndication::Feed;
@@ -6,7 +6,7 @@ use quick_xml::{
     events::{attributes::Attributes, Event},
     Reader,
 };
-use reqwest::{StatusCode, Url};
+use reqwest::Url;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use thiserror::Error;
@@ -193,37 +193,14 @@ fn partial_list(feed: &Feed) -> Result<PartialList, ParseEntry> {
     ))
 }
 
-impl Response {
-    pub async fn try_from(response: reqwest::Response) -> Result<Self, ClientError> {
-        match response.status() {
-            status_code if status_code.is_success() => {
-                let body = response.text().await?;
-                Ok(Self { body })
-            }
-            StatusCode::BAD_REQUEST => Err(ClientError::BadRequest),
-            StatusCode::UNAUTHORIZED => Err(ClientError::Unauthorized),
-            StatusCode::NOT_FOUND => Err(ClientError::NotFound),
-            StatusCode::METHOD_NOT_ALLOWED => Err(ClientError::MethodNotAllowed),
-            StatusCode::INTERNAL_SERVER_ERROR => Err(ClientError::InternalServerError),
-            _ => Err(ClientError::UnknownStatusCode),
-        }
-    }
-
-    pub fn into_string(self) -> String {
-        self.body
-    }
-}
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct MemberResponse {
     body: String,
 }
 
-impl From<Response> for MemberResponse {
-    fn from(response: Response) -> Self {
-        Self {
-            body: response.body,
-        }
+impl From<String> for MemberResponse {
+    fn from(body: String) -> Self {
+        Self { body }
     }
 }
 
@@ -245,8 +222,8 @@ impl TryFrom<MemberResponse> for Entry {
 #[derive(Debug, Eq, PartialEq)]
 pub struct EmptyResponse;
 
-impl From<Response> for EmptyResponse {
-    fn from(_: Response) -> Self {
+impl From<String> for EmptyResponse {
+    fn from(_: String) -> Self {
         Self
     }
 }
@@ -262,11 +239,9 @@ pub struct CategoryDocumentResponse {
     body: String,
 }
 
-impl From<Response> for CategoryDocumentResponse {
-    fn from(response: Response) -> Self {
-        Self {
-            body: response.body,
-        }
+impl From<String> for CategoryDocumentResponse {
+    fn from(body: String) -> Self {
+        Self { body }
     }
 }
 
@@ -289,11 +264,9 @@ pub struct CollectionResponse {
     body: String,
 }
 
-impl From<Response> for CollectionResponse {
-    fn from(response: Response) -> Self {
-        Self {
-            body: response.body,
-        }
+impl From<String> for CollectionResponse {
+    fn from(body: String) -> Self {
+        Self { body }
     }
 }
 
