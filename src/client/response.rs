@@ -7,8 +7,16 @@ use quick_xml::{
     Reader,
 };
 use reqwest::{StatusCode, Url};
+use std::convert::TryFrom;
 use std::str::FromStr;
 use thiserror::Error;
+
+pub type CreateEntryResponse = MemberResponse;
+pub type DeleteEntryResponse = EmptyResponse;
+pub type GetEntryResponse = MemberResponse;
+pub type ListCategoriesResponse = CategoryDocumentResponse;
+pub type ListEntriesResponse = CollectionResponse;
+pub type UpdateEntryResponse = MemberResponse;
 
 #[derive(Debug)]
 pub struct Response {
@@ -201,18 +209,106 @@ impl Response {
         }
     }
 
-    pub fn into_entry(self) -> Result<Entry, ClientError> {
-        let feed = from_entry_xml(self.body.as_str()).map_err(|_| ClientError::ResponseBody)?;
-        first_entry(&feed).map_err(|_| ClientError::ResponseBody)
+    pub fn into_string(self) -> String {
+        self.body
     }
+}
 
-    pub fn into_partial_list(self) -> Result<PartialList, ClientError> {
-        let feed = from_feed_xml(self.body.as_str()).map_err(|_| ClientError::ResponseBody)?;
-        partial_list(&feed).map_err(|_| ClientError::ResponseBody)
+#[derive(Debug, Eq, PartialEq)]
+pub struct MemberResponse {
+    body: String,
+}
+
+impl From<Response> for MemberResponse {
+    fn from(response: Response) -> Self {
+        Self {
+            body: response.body,
+        }
     }
+}
 
-    pub fn into_categories(self) -> Result<Vec<String>, ClientError> {
-        from_category_document_xml(self.body.as_str()).map_err(|_| ClientError::ResponseBody)
+impl From<MemberResponse> for String {
+    fn from(response: MemberResponse) -> Self {
+        response.body
+    }
+}
+
+impl TryFrom<MemberResponse> for Entry {
+    type Error = ParseEntry;
+
+    fn try_from(response: MemberResponse) -> Result<Self, Self::Error> {
+        let feed = from_entry_xml(response.body.as_str())?;
+        first_entry(&feed)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct EmptyResponse;
+
+impl From<Response> for EmptyResponse {
+    fn from(_: Response) -> Self {
+        Self
+    }
+}
+
+impl From<EmptyResponse> for String {
+    fn from(_: EmptyResponse) -> Self {
+        "".to_string()
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct CategoryDocumentResponse {
+    body: String,
+}
+
+impl From<Response> for CategoryDocumentResponse {
+    fn from(response: Response) -> Self {
+        Self {
+            body: response.body,
+        }
+    }
+}
+
+impl From<CategoryDocumentResponse> for String {
+    fn from(response: CategoryDocumentResponse) -> Self {
+        response.body
+    }
+}
+
+impl TryFrom<CategoryDocumentResponse> for Vec<String> {
+    type Error = ParseEntry;
+
+    fn try_from(response: CategoryDocumentResponse) -> Result<Self, Self::Error> {
+        from_category_document_xml(response.body.as_str()).map_err(|_| ParseEntry)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct CollectionResponse {
+    body: String,
+}
+
+impl From<Response> for CollectionResponse {
+    fn from(response: Response) -> Self {
+        Self {
+            body: response.body,
+        }
+    }
+}
+
+impl From<CollectionResponse> for String {
+    fn from(response: CollectionResponse) -> Self {
+        response.body
+    }
+}
+
+impl TryFrom<CollectionResponse> for PartialList {
+    type Error = ParseEntry;
+
+    fn try_from(response: CollectionResponse) -> Result<Self, Self::Error> {
+        let feed = from_feed_xml(response.body.as_str())?;
+        partial_list(&feed)
     }
 }
 

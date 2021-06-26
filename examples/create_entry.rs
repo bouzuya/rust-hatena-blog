@@ -1,10 +1,12 @@
-use hatena_blog::{Client, Config, EntryParams};
+use std::convert::TryInto;
+
+use hatena_blog::{Client, Config, Entry, EntryParams};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
-    let response_body = client
+    let response = client
         .create_entry(EntryParams::new(
             config.hatena_id,
             "title1".to_string(),
@@ -14,6 +16,7 @@ async fn main() -> anyhow::Result<()> {
             true,
         ))
         .await?;
-    println!("{:?}", response_body);
+    let entry: Entry = response.try_into()?;
+    println!("{:?}", entry);
     Ok(())
 }

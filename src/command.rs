@@ -1,8 +1,8 @@
-use std::{fs::File, io, path::PathBuf};
+use std::{convert::TryInto, fs::File, io, path::PathBuf};
 
 use serde_json::json;
 
-use crate::{Client, Config, EntryId, EntryParams};
+use crate::{Client, Config, Entry, EntryId, EntryParams};
 
 fn read_content(content: PathBuf) -> anyhow::Result<String> {
     let (mut stdin_read, mut file_read);
@@ -28,7 +28,7 @@ pub async fn create(
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
     let content = read_content(content)?;
-    let entry = client
+    let entry: Entry = client
         .create_entry(EntryParams::new(
             config.hatena_id,
             title,
@@ -37,7 +37,8 @@ pub async fn create(
             categories,
             draft,
         ))
-        .await?;
+        .await?
+        .try_into()?;
     println!("{}", entry.to_json());
     Ok(())
 }
@@ -52,7 +53,7 @@ pub async fn delete(entry_id: EntryId) -> anyhow::Result<()> {
 pub async fn get(entry_id: EntryId) -> anyhow::Result<()> {
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
-    let entry = client.get_entry(&entry_id).await?;
+    let entry: Entry = client.get_entry(&entry_id).await?.try_into()?;
     println!("{}", entry.to_json());
     Ok(())
 }
@@ -60,7 +61,10 @@ pub async fn get(entry_id: EntryId) -> anyhow::Result<()> {
 pub async fn list(page: Option<String>) -> anyhow::Result<()> {
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
-    let (next_page, entry_ids) = client.list_entries_in_page(page.as_deref()).await?;
+    let (next_page, entry_ids) = client
+        .list_entries_in_page(page.as_deref())
+        .await?
+        .try_into()?;
     println!(
         "{}",
         serde_json::Value::Object({
@@ -89,7 +93,7 @@ pub async fn list(page: Option<String>) -> anyhow::Result<()> {
 pub async fn list_categories() -> anyhow::Result<()> {
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
-    let categories = client.list_categories().await?;
+    let categories: Vec<String> = client.list_categories().await?.try_into()?;
     println!("{}", json!(categories));
     Ok(())
 }
@@ -105,12 +109,13 @@ pub async fn update(
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
     let content = read_content(content)?;
-    let entry = client
+    let entry: Entry = client
         .update_entry(
             &entry_id,
             EntryParams::new(config.hatena_id, title, content, updated, categories, draft),
         )
-        .await?;
+        .await?
+        .try_into()?;
     println!("{}", entry.to_json());
     Ok(())
 }

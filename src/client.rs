@@ -4,8 +4,10 @@ mod response;
 
 pub use self::config::Config;
 pub use self::entry_params::EntryParams;
-use self::response::Response;
-use crate::entry::Entry;
+use self::response::{
+    CreateEntryResponse, DeleteEntryResponse, GetEntryResponse, ListCategoriesResponse,
+    ListEntriesResponse, Response, UpdateEntryResponse,
+};
 use crate::EntryId;
 use reqwest::Method;
 use thiserror::Error;
@@ -44,49 +46,55 @@ impl Client {
         }
     }
 
-    pub async fn create_entry(&self, entry_params: EntryParams) -> Result<Entry, ClientError> {
+    pub async fn create_entry(
+        &self,
+        entry_params: EntryParams,
+    ) -> Result<CreateEntryResponse, ClientError> {
         let body = entry_params.into_xml();
         self.request(Method::POST, &self.collection_uri(None), Some(body))
-            .await?
-            .into_entry()
+            .await
+            .map(CreateEntryResponse::from)
     }
 
-    pub async fn delete_entry(&self, entry_id: &EntryId) -> Result<(), ClientError> {
+    pub async fn delete_entry(
+        &self,
+        entry_id: &EntryId,
+    ) -> Result<DeleteEntryResponse, ClientError> {
         self.request(Method::DELETE, &self.member_uri(entry_id), None)
             .await
-            .map(|_| ())
+            .map(DeleteEntryResponse::from)
     }
 
-    pub async fn get_entry(&self, entry_id: &EntryId) -> Result<Entry, ClientError> {
+    pub async fn get_entry(&self, entry_id: &EntryId) -> Result<GetEntryResponse, ClientError> {
         self.request(Method::GET, &self.member_uri(entry_id), None)
-            .await?
-            .into_entry()
+            .await
+            .map(GetEntryResponse::from)
     }
 
-    pub async fn list_categories(&self) -> Result<Vec<String>, ClientError> {
+    pub async fn list_categories(&self) -> Result<ListCategoriesResponse, ClientError> {
         self.request(Method::GET, &self.category_document_uri(), None)
-            .await?
-            .into_categories()
+            .await
+            .map(ListCategoriesResponse::from)
     }
 
     pub async fn list_entries_in_page(
         &self,
         page: Option<&str>,
-    ) -> Result<PartialList, ClientError> {
+    ) -> Result<ListEntriesResponse, ClientError> {
         self.request(Method::GET, &self.collection_uri(page), None)
-            .await?
-            .into_partial_list()
+            .await
+            .map(ListEntriesResponse::from)
     }
 
     pub async fn update_entry(
         &self,
         entry_id: &EntryId,
         entry_params: EntryParams,
-    ) -> Result<Entry, ClientError> {
+    ) -> Result<UpdateEntryResponse, ClientError> {
         let body = entry_params.into_xml();
         self.request(Method::PUT, &self.member_uri(entry_id), Some(body))
-            .await?
-            .into_entry()
+            .await
+            .map(UpdateEntryResponse::from)
     }
 
     fn category_document_uri(&self) -> String {
