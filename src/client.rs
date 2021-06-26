@@ -21,8 +21,6 @@ pub struct Client {
 pub enum ClientError {
     #[error("request error")]
     RequestError(#[from] reqwest::Error),
-    #[error("response body error")]
-    ResponseBody,
     #[error("bad request")]
     BadRequest,
     #[error("unauthorized")]
