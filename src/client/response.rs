@@ -8,6 +8,7 @@ use quick_xml::{
 };
 use reqwest::Url;
 use std::convert::TryFrom;
+use std::fmt::Display;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -17,11 +18,6 @@ pub type GetEntryResponse = MemberResponse;
 pub type ListCategoriesResponse = CategoryDocumentResponse;
 pub type ListEntriesResponse = CollectionResponse;
 pub type UpdateEntryResponse = MemberResponse;
-
-#[derive(Debug)]
-pub struct Response {
-    body: String,
-}
 
 #[derive(Debug, Eq, Error, PartialEq)]
 #[error("parse entry error")]
@@ -198,6 +194,12 @@ pub struct MemberResponse {
     body: String,
 }
 
+impl Display for MemberResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.body)
+    }
+}
+
 impl From<String> for MemberResponse {
     fn from(body: String) -> Self {
         Self { body }
@@ -222,6 +224,12 @@ impl TryFrom<MemberResponse> for Entry {
 #[derive(Debug, Eq, PartialEq)]
 pub struct EmptyResponse;
 
+impl Display for EmptyResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "")
+    }
+}
+
 impl From<String> for EmptyResponse {
     fn from(_: String) -> Self {
         Self
@@ -237,6 +245,12 @@ impl From<EmptyResponse> for String {
 #[derive(Debug, Eq, PartialEq)]
 pub struct CategoryDocumentResponse {
     body: String,
+}
+
+impl Display for CategoryDocumentResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.body)
+    }
 }
 
 impl From<String> for CategoryDocumentResponse {
@@ -262,6 +276,12 @@ impl TryFrom<CategoryDocumentResponse> for Vec<String> {
 #[derive(Debug, Eq, PartialEq)]
 pub struct CollectionResponse {
     body: String,
+}
+
+impl Display for CollectionResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.body)
+    }
 }
 
 impl From<String> for CollectionResponse {

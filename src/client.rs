@@ -4,7 +4,7 @@ mod response;
 
 pub use self::config::Config;
 pub use self::entry_params::EntryParams;
-use self::response::{
+pub use self::response::{
     CreateEntryResponse, DeleteEntryResponse, GetEntryResponse, ListCategoriesResponse,
     ListEntriesResponse, UpdateEntryResponse,
 };
