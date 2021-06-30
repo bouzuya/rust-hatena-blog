@@ -1,7 +1,6 @@
-use crate::client::PartialList;
 use crate::{Entry, EntryId};
 use anyhow::anyhow;
-use atom_syndication::Feed;
+use atom_syndication::{Feed, FixedDateTime};
 use quick_xml::{
     events::{attributes::Attributes, Event},
     Reader,
@@ -18,6 +17,8 @@ pub type GetEntryResponse = MemberResponse;
 pub type ListCategoriesResponse = CategoryDocumentResponse;
 pub type ListEntriesResponse = CollectionResponse;
 pub type UpdateEntryResponse = MemberResponse;
+
+pub type PartialList = (Option<String>, Vec<EntryId>);
 
 #[derive(Debug, Eq, Error, PartialEq)]
 #[error("parse entry error")]
@@ -39,6 +40,15 @@ fn get_draft(entry: &atom_syndication::Entry) -> bool {
         .unwrap_or(false)
 }
 
+fn get_edited(entry: &atom_syndication::Entry) -> Option<String> {
+    entry
+        .extensions
+        .get("app")
+        .and_then(|e| e.get("edited"))
+        .and_then(|children| children.iter().find(|e| &e.name == "app:edited"))
+        .and_then(|e| e.value.clone())
+}
+
 fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
     // https://blog.hatena.ne.jp/{HATENA_ID}/{BLOG_ID}/atom/entry/{ENTRY_ID}
     entry
@@ -49,8 +59,7 @@ fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
         .and_then(|id| id.parse().ok())
 }
 
-fn first_entry(feed: &Feed) -> Result<Entry, ParseEntry> {
-    let entry = feed.entries().first().ok_or(ParseEntry)?;
+fn to_entry(entry: atom_syndication::Entry) -> Result<Entry, ParseEntry> {
     Ok(Entry::new(
         get_id(&entry).ok_or(ParseEntry)?,
         entry.title.to_string(),
@@ -67,8 +76,20 @@ fn first_entry(feed: &Feed) -> Result<Entry, ParseEntry> {
             .value
             .ok_or(ParseEntry)?,
         entry.updated.to_rfc3339(),
+        entry.published.ok_or(ParseEntry)?.to_rfc3339(),
+        FixedDateTime::from_str(&get_edited(&entry).ok_or(ParseEntry)?)
+            .map_err(|_| ParseEntry)?
+            .to_rfc3339(),
         get_draft(&entry),
     ))
+}
+
+fn first_entry(feed: &Feed) -> Result<Entry, ParseEntry> {
+    feed.entries()
+        .first()
+        .cloned()
+        .ok_or(ParseEntry)
+        .and_then(to_entry)
 }
 
 fn from_entry_xml(body: &str) -> Result<Feed, ParseEntry> {
@@ -170,7 +191,7 @@ fn from_category_document_xml(xml: &str) -> anyhow::Result<Vec<String>> {
     categories.ok_or_else(|| anyhow!("no <app:categories>"))
 }
 
-fn partial_list(feed: &Feed) -> Result<PartialList, ParseEntry> {
+fn partial_list(feed: &Feed) -> Result<(Option<String>, Vec<Entry>), ParseEntry> {
     Ok((
         feed.links
             .iter()
@@ -184,8 +205,9 @@ fn partial_list(feed: &Feed) -> Result<PartialList, ParseEntry> {
             }),
         feed.entries
             .iter()
-            .map(|entry| get_id(entry).ok_or(ParseEntry))
-            .collect::<Result<Vec<EntryId>, ParseEntry>>()?,
+            .cloned()
+            .map(to_entry)
+            .collect::<Result<Vec<Entry>, ParseEntry>>()?,
     ))
 }
 
@@ -301,6 +323,19 @@ impl TryFrom<CollectionResponse> for PartialList {
 
     fn try_from(response: CollectionResponse) -> Result<Self, Self::Error> {
         let feed = from_feed_xml(response.body.as_str())?;
+        let (next_page, entries) = partial_list(&feed)?;
+        Ok((
+            next_page,
+            entries.into_iter().map(|entry| entry.id).collect(),
+        ))
+    }
+}
+
+impl TryFrom<CollectionResponse> for (Option<String>, Vec<Entry>) {
+    type Error = ParseEntry;
+
+    fn try_from(response: CollectionResponse) -> Result<Self, Self::Error> {
+        let feed = from_feed_xml(response.body.as_str())?;
         partial_list(&feed)
     }
 }
@@ -362,6 +397,8 @@ mod tests {
                 "{はてなID}".to_string(),
                 vec!["Scala".to_string(), "Perl".to_string()],
                 "\n    ** 記事本文\n    - リスト1\n    - リスト2\n    内容\n  ".to_string(),
+                "2013-09-02T11:28:23+09:00".to_string(),
+                "2013-09-02T11:28:23+09:00".to_string(),
                 "2013-09-02T11:28:23+09:00".to_string(),
                 false,
             ))

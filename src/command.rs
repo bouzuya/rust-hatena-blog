@@ -2,7 +2,7 @@ use std::{convert::TryInto, fs::File, io, path::PathBuf};
 
 use serde_json::json;
 
-use crate::{Client, Config, Entry, EntryId, EntryParams};
+use crate::{Client, Config, Entry, EntryId, EntryParams, PartialList};
 
 fn read_content(content: PathBuf) -> anyhow::Result<String> {
     let (mut stdin_read, mut file_read);
@@ -61,7 +61,7 @@ pub async fn get(entry_id: EntryId) -> anyhow::Result<()> {
 pub async fn list(page: Option<String>) -> anyhow::Result<()> {
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
-    let (next_page, entry_ids) = client
+    let (next_page, entry_ids): PartialList = client
         .list_entries_in_page(page.as_deref())
         .await?
         .try_into()?;

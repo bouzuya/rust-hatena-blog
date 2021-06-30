@@ -4,13 +4,15 @@ use serde_json::json;
 
 #[derive(Debug, Eq, PartialEq, Serialize)]
 pub struct Entry {
-    author_name: String,
-    categories: Vec<String>,
-    content: String,
-    draft: bool,
-    id: EntryId,
-    title: String,
-    updated: String, // YYYY-MM-DDTHH:MM:SS
+    pub author_name: String,
+    pub categories: Vec<String>,
+    pub content: String,
+    pub draft: bool,
+    pub edited: String,
+    pub id: EntryId,
+    pub published: String,
+    pub title: String,
+    pub updated: String,
 }
 
 impl Entry {
@@ -21,6 +23,8 @@ impl Entry {
         categories: Vec<String>,
         content: String,
         updated: String,
+        published: String,
+        edited: String,
         draft: bool,
     ) -> Self {
         Self {
@@ -28,7 +32,9 @@ impl Entry {
             categories,
             content,
             draft,
+            edited,
             id,
+            published,
             title,
             updated,
         }
@@ -51,6 +57,8 @@ mod test {
             vec!["CATEGORY".to_string()],
             "CONTENT".to_string(),
             "2020-02-07T00:00:00Z".to_string(),
+            "2020-02-08T00:00:00Z".to_string(),
+            "2020-02-09T00:00:00Z".to_string(),
             true,
         ))
     }
@@ -65,16 +73,20 @@ mod test {
                 vec!["CATEGORY1".to_string(), "CATEGORY2".to_string()],
                 "CONTENT1".to_string(),
                 "2020-02-07T23:59:59Z".to_string(),
+                "2020-02-08T23:59:59Z".to_string(),
+                "2020-02-09T23:59:59Z".to_string(),
                 true,
             ),
             Entry {
-                id: "ID1".parse::<EntryId>()?,
-                title: "TITLE1".into(),
                 author_name: "AUTHOR_NAME1".into(),
                 categories: vec!["CATEGORY1".into(), "CATEGORY2".into()],
                 content: "CONTENT1".into(),
-                updated: "2020-02-07T23:59:59Z".into(),
                 draft: true,
+                edited: "2020-02-09T23:59:59Z".to_string(),
+                id: "ID1".parse::<EntryId>()?,
+                published: "2020-02-08T23:59:59Z".to_string(),
+                title: "TITLE1".into(),
+                updated: "2020-02-07T23:59:59Z".into(),
             }
         );
         Ok(())
@@ -85,7 +97,7 @@ mod test {
         let entry = new_dummy()?;
         assert_eq!(
             entry.to_json(),
-            r#"{"author_name":"AUTHOR_NAME","categories":["CATEGORY"],"content":"CONTENT","draft":true,"id":"ID","title":"TITLE","updated":"2020-02-07T00:00:00Z"}"#
+            r#"{"author_name":"AUTHOR_NAME","categories":["CATEGORY"],"content":"CONTENT","draft":true,"edited":"2020-02-09T00:00:00Z","id":"ID","published":"2020-02-08T00:00:00Z","title":"TITLE","updated":"2020-02-07T00:00:00Z"}"#
         );
         Ok(())
     }

@@ -6,7 +6,7 @@ pub use self::config::Config;
 pub use self::entry_params::EntryParams;
 pub use self::response::{
     CreateEntryResponse, DeleteEntryResponse, GetEntryResponse, ListCategoriesResponse,
-    ListEntriesResponse, UpdateEntryResponse,
+    ListEntriesResponse, PartialList, UpdateEntryResponse,
 };
 use crate::EntryId;
 use reqwest::{Method, StatusCode};
@@ -34,8 +34,6 @@ pub enum ClientError {
     #[error("unknown status code")]
     UnknownStatusCode,
 }
-
-pub type PartialList = (Option<String>, Vec<EntryId>);
 
 impl Client {
     pub fn new(config: &Config) -> Self {
