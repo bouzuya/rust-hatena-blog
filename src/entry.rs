@@ -1,4 +1,4 @@
-use crate::EntryId;
+use crate::{EntryId, FixedDateTime};
 use serde::Serialize;
 use serde_json::json;
 
@@ -9,11 +9,11 @@ pub struct Entry {
     pub content: String,
     pub draft: bool,
     pub edit_url: String,
-    pub edited: String,
+    pub edited: FixedDateTime,
     pub id: EntryId,
-    pub published: String,
+    pub published: FixedDateTime,
     pub title: String,
-    pub updated: String,
+    pub updated: FixedDateTime,
     pub url: String,
 }
 
@@ -25,6 +25,8 @@ impl Entry {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use super::*;
 
     fn new_dummy() -> anyhow::Result<Entry> {
@@ -35,11 +37,11 @@ mod test {
             draft: true,
             edit_url: "https://blog.hatena.ne.jp/{はてなID}/{ブログID}/atom/edit/2500000000"
                 .to_string(),
-            edited: "2020-02-09T00:00:00Z".to_string(),
+            edited: FixedDateTime::from_str("2020-02-09T00:00:00Z")?,
             id: "ID".parse::<EntryId>()?,
-            published: "2020-02-08T00:00:00Z".to_string(),
+            published: FixedDateTime::from_str("2020-02-08T00:00:00Z")?,
             title: "TITLE".to_string(),
-            updated: "2020-02-07T00:00:00Z".to_string(),
+            updated: FixedDateTime::from_str("2020-02-07T00:00:00Z")?,
             url: "http://{ブログID}/entry/2013/09/02/112823".to_string(),
         })
     }

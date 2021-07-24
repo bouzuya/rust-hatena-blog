@@ -1,6 +1,6 @@
-use crate::{Entry, EntryId};
+use crate::{Entry, EntryId, FixedDateTime};
 use anyhow::anyhow;
-use atom_syndication::{Feed, FixedDateTime};
+use atom_syndication::Feed;
 use quick_xml::{
     events::{attributes::Attributes, Event},
     Reader,
@@ -90,14 +90,13 @@ fn to_entry(entry: atom_syndication::Entry) -> Result<Entry, ParseEntry> {
             .value
             .ok_or(ParseEntry)?,
         draft: get_draft(&entry),
-        edited: FixedDateTime::from_str(&get_edited(&entry).ok_or(ParseEntry)?)
-            .map_err(|_| ParseEntry)?
-            .to_rfc3339(),
+        edited: FixedDateTime::from_str(get_edited(&entry).ok_or(ParseEntry)?.as_str())
+            .map_err(|_| ParseEntry)?,
         edit_url: get_edit_url(&entry).ok_or(ParseEntry)?,
         id: get_id(&entry).ok_or(ParseEntry)?,
-        published: entry.published.ok_or(ParseEntry)?.to_rfc3339(),
+        published: FixedDateTime::from(entry.published.ok_or(ParseEntry)?),
         title: entry.title.to_string(),
-        updated: entry.updated.to_rfc3339(),
+        updated: FixedDateTime::from(entry.updated),
         url: get_url(&entry).ok_or(ParseEntry)?,
     })
 }
@@ -364,7 +363,7 @@ mod tests {
 
     use atom_syndication::{
         extension::{Extension, ExtensionMap},
-        Category, Content, FixedDateTime, Link, Person, Text,
+        Category, Content, Link, Person, Text,
     };
 
     use super::*;
@@ -417,11 +416,11 @@ mod tests {
                 draft: false,
                 edit_url: "https://blog.hatena.ne.jp/{はてなID}/{ブログID}/atom/edit/2500000000"
                     .to_string(),
-                edited: "2013-09-02T11:28:25+09:00".to_string(),
+                edited: FixedDateTime::from_str("2013-09-02T11:28:25+09:00")?,
                 id: "2500000000".parse::<EntryId>()?,
-                published: "2013-09-02T11:28:24+09:00".to_string(),
+                published: FixedDateTime::from_str("2013-09-02T11:28:24+09:00")?,
                 title: "記事タイトル".to_string(),
-                updated: "2013-09-02T11:28:23+09:00".to_string(),
+                updated: FixedDateTime::from_str("2013-09-02T11:28:23+09:00")?,
                 url: "http://{ブログID}/entry/2013/09/02/112823".to_string(),
             })
         );
@@ -441,7 +440,7 @@ mod tests {
         );
         assert_eq!(
             entry.updated,
-            FixedDateTime::parse_from_rfc3339("2013-09-02T11:28:23+09:00")?
+            atom_syndication::FixedDateTime::parse_from_rfc3339("2013-09-02T11:28:23+09:00")?
         );
         assert_eq!(
             entry.authors,
@@ -491,7 +490,7 @@ mod tests {
         );
         assert_eq!(
             entry.published,
-            Some(FixedDateTime::parse_from_rfc3339(
+            Some(atom_syndication::FixedDateTime::parse_from_rfc3339(
                 "2013-09-02T11:28:24+09:00"
             )?)
         );
