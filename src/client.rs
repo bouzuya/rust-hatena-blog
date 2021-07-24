@@ -1,14 +1,10 @@
-mod config;
-mod entry_params;
-mod response;
-
-pub use self::config::Config;
-pub use self::entry_params::EntryParams;
-pub use self::response::{
-    CreateEntryResponse, DeleteEntryResponse, GetEntryResponse, ListCategoriesResponse,
-    ListEntriesResponse, PartialList, UpdateEntryResponse,
-};
+use crate::Config;
 use crate::EntryId;
+use crate::EntryParams;
+use crate::{
+    CreateEntryResponse, DeleteEntryResponse, GetEntryResponse, ListCategoriesResponse,
+    ListEntriesResponse, UpdateEntryResponse,
+};
 use reqwest::{Method, StatusCode};
 use thiserror::Error;
 

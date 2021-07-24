@@ -1,8 +1,6 @@
-use std::{convert::TryInto, fs::File, io, path::PathBuf};
-
-use serde_json::json;
-
 use crate::{Client, Config, Entry, EntryId, EntryParams, PartialList};
+use serde_json::json;
+use std::{convert::TryInto, fs::File, io, path::PathBuf};
 
 fn read_content(content: PathBuf) -> anyhow::Result<String> {
     let (mut stdin_read, mut file_read);
