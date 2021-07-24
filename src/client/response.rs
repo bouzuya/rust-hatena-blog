@@ -49,6 +49,22 @@ fn get_edited(entry: &atom_syndication::Entry) -> Option<String> {
         .and_then(|e| e.value.clone())
 }
 
+fn get_edit_url(entry: &atom_syndication::Entry) -> Option<String> {
+    entry
+        .links
+        .iter()
+        .find(|link| link.rel == "edit")
+        .map(|link| link.href.clone())
+}
+
+fn get_url(entry: &atom_syndication::Entry) -> Option<String> {
+    entry
+        .links
+        .iter()
+        .find(|link| link.rel == "alternate")
+        .map(|link| link.href.clone())
+}
+
 fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
     // https://blog.hatena.ne.jp/{HATENA_ID}/{BLOG_ID}/atom/entry/{ENTRY_ID}
     entry
@@ -60,28 +76,30 @@ fn get_id(entry: &atom_syndication::Entry) -> Option<EntryId> {
 }
 
 fn to_entry(entry: atom_syndication::Entry) -> Result<Entry, ParseEntry> {
-    Ok(Entry::new(
-        get_id(&entry).ok_or(ParseEntry)?,
-        entry.title.to_string(),
-        entry.authors.first().ok_or(ParseEntry)?.name.to_string(),
-        entry
+    Ok(Entry {
+        author_name: entry.authors.first().ok_or(ParseEntry)?.name.to_string(),
+        categories: entry
             .categories
             .iter()
             .map(|c| c.term.clone())
             .collect::<Vec<String>>(),
-        entry
+        content: entry
             .content
             .clone()
             .ok_or(ParseEntry)?
             .value
             .ok_or(ParseEntry)?,
-        entry.updated.to_rfc3339(),
-        entry.published.ok_or(ParseEntry)?.to_rfc3339(),
-        FixedDateTime::from_str(&get_edited(&entry).ok_or(ParseEntry)?)
+        draft: get_draft(&entry),
+        edited: FixedDateTime::from_str(&get_edited(&entry).ok_or(ParseEntry)?)
             .map_err(|_| ParseEntry)?
             .to_rfc3339(),
-        get_draft(&entry),
-    ))
+        edit_url: get_edit_url(&entry).ok_or(ParseEntry)?,
+        id: get_id(&entry).ok_or(ParseEntry)?,
+        published: entry.published.ok_or(ParseEntry)?.to_rfc3339(),
+        title: entry.title.to_string(),
+        updated: entry.updated.to_rfc3339(),
+        url: get_url(&entry).ok_or(ParseEntry)?,
+    })
 }
 
 fn first_entry(feed: &Feed) -> Result<Entry, ParseEntry> {
@@ -360,8 +378,8 @@ mod tests {
   <author><name>{はてなID}</name></author>
   <title>記事タイトル</title>
   <updated>2013-09-02T11:28:23+09:00</updated>
-  <published>2013-09-02T11:28:23+09:00</published>
-  <app:edited>2013-09-02T11:28:23+09:00</app:edited>
+  <published>2013-09-02T11:28:24+09:00</published>
+  <app:edited>2013-09-02T11:28:25+09:00</app:edited>
   <summary type="text"> 記事本文 リスト1 リスト2 内容 </summary>
   <content type="text/x-hatena-syntax">
     ** 記事本文
@@ -391,17 +409,21 @@ mod tests {
         let feed = from_entry_xml(GET_ENTRY_RESPONSE_XML)?;
         assert_eq!(
             first_entry(&feed),
-            Ok(Entry::new(
-                "2500000000".parse::<EntryId>()?,
-                "記事タイトル".to_string(),
-                "{はてなID}".to_string(),
-                vec!["Scala".to_string(), "Perl".to_string()],
-                "\n    ** 記事本文\n    - リスト1\n    - リスト2\n    内容\n  ".to_string(),
-                "2013-09-02T11:28:23+09:00".to_string(),
-                "2013-09-02T11:28:23+09:00".to_string(),
-                "2013-09-02T11:28:23+09:00".to_string(),
-                false,
-            ))
+            Ok(Entry {
+                author_name: "{はてなID}".to_string(),
+                categories: vec!["Scala".to_string(), "Perl".to_string()],
+                content: "\n    ** 記事本文\n    - リスト1\n    - リスト2\n    内容\n  "
+                    .to_string(),
+                draft: false,
+                edit_url: "https://blog.hatena.ne.jp/{はてなID}/{ブログID}/atom/edit/2500000000"
+                    .to_string(),
+                edited: "2013-09-02T11:28:25+09:00".to_string(),
+                id: "2500000000".parse::<EntryId>()?,
+                published: "2013-09-02T11:28:24+09:00".to_string(),
+                title: "記事タイトル".to_string(),
+                updated: "2013-09-02T11:28:23+09:00".to_string(),
+                url: "http://{ブログID}/entry/2013/09/02/112823".to_string(),
+            })
         );
         Ok(())
     }
@@ -470,7 +492,7 @@ mod tests {
         assert_eq!(
             entry.published,
             Some(FixedDateTime::parse_from_rfc3339(
-                "2013-09-02T11:28:23+09:00"
+                "2013-09-02T11:28:24+09:00"
             )?)
         );
         assert_eq!(entry.rights, None);
@@ -520,7 +542,7 @@ mod tests {
                     "edited".to_string(),
                     vec![Extension {
                         name: "app:edited".to_string(),
-                        value: Some("2013-09-02T11:28:23+09:00".to_string()),
+                        value: Some("2013-09-02T11:28:25+09:00".to_string()),
                         attrs: BTreeMap::new(),
                         children: BTreeMap::new(),
                     }],
