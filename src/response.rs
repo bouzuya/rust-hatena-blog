@@ -229,7 +229,7 @@ fn partial_list(feed: &Feed) -> Result<(Option<String>, Vec<Entry>), ParseEntry>
     ))
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MemberResponse {
     body: String,
 }
@@ -261,7 +261,7 @@ impl TryFrom<MemberResponse> for Entry {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct EmptyResponse;
 
 impl Display for EmptyResponse {
@@ -282,7 +282,7 @@ impl From<EmptyResponse> for String {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CategoryDocumentResponse {
     body: String,
 }
@@ -313,7 +313,7 @@ impl TryFrom<CategoryDocumentResponse> for Vec<String> {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CollectionResponse {
     body: String,
 }
