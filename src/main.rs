@@ -1,5 +1,5 @@
 use hatena_blog::command;
-use hatena_blog::EntryId;
+use hatena_blog_api::EntryId;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

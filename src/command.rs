@@ -1,6 +1,50 @@
-use crate::{Client, Config, Entry, EntryId, EntryParams, PartialList};
+use hatena_blog_api::{Client, Config, Entry, EntryId, EntryParams, PartialList};
+use serde::Serialize;
 use serde_json::json;
 use std::{convert::TryInto, fs::File, io, path::PathBuf};
+
+#[derive(Debug, Serialize)]
+struct EntryJson {
+    author_name: String,
+    categories: Vec<String>,
+    content: String,
+    draft: bool,
+    edit_url: String,
+    edited: String,
+    id: String,
+    published: String,
+    title: String,
+    updated: String,
+    url: String,
+}
+
+impl std::fmt::Display for EntryJson {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).map_err(|_| std::fmt::Error)?
+        )
+    }
+}
+
+impl From<Entry> for EntryJson {
+    fn from(entry: Entry) -> Self {
+        EntryJson {
+            author_name: entry.author_name,
+            categories: entry.categories,
+            content: entry.content,
+            draft: entry.draft,
+            edit_url: entry.edit_url,
+            edited: entry.edited.to_string(),
+            id: entry.id.to_string(),
+            published: entry.published.to_string(),
+            title: entry.title,
+            updated: entry.updated.to_string(),
+            url: entry.url,
+        }
+    }
+}
 
 fn read_content(content: PathBuf) -> anyhow::Result<String> {
     let (mut stdin_read, mut file_read);
@@ -37,7 +81,7 @@ pub async fn create(
         ))
         .await?
         .try_into()?;
-    println!("{}", entry.to_json());
+    println!("{}", EntryJson::from(entry));
     Ok(())
 }
 
@@ -52,7 +96,7 @@ pub async fn get(entry_id: EntryId) -> anyhow::Result<()> {
     let config = Config::new_from_env()?;
     let client = Client::new(&config);
     let entry: Entry = client.get_entry(&entry_id).await?.try_into()?;
-    println!("{}", entry.to_json());
+    println!("{}", EntryJson::from(entry));
     Ok(())
 }
 
@@ -114,6 +158,6 @@ pub async fn update(
         )
         .await?
         .try_into()?;
-    println!("{}", entry.to_json());
+    println!("{}", EntryJson::from(entry));
     Ok(())
 }
